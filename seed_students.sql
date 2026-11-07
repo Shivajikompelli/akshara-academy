@@ -31,3 +31,4 @@ insert into students (
   ('DEMO-008', 'Tanvi Demo Kulkarni', 'Class 10', 'Demo City High School', 'Prakash Kulkarni', '+919000000008', '14 Test Heights, Wing A', '2026-05-20', true, 2200, 5, 'active', 'SEED_RECORD'),
   ('DEMO-009', 'Aditya Demo Joshi', 'Class 10', 'Sample Convent School', 'Vijay Joshi', '+919000000009', '33 Dummy Apartments', '2026-06-01', false, 2200, 10, 'active', 'SEED_RECORD'),
   ('DEMO-010', 'Pooja Demo Rao', 'Class 10', 'Demo Model Academy', 'Mohan Rao', '+919000000010', '67 Trial Road, Sector 5', '2026-06-12', true, 2200, 5, 'inactive', 'SEED_RECORD');
+

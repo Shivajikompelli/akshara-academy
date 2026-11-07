@@ -13,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { MessageSquare, AlertCircle, AlertTriangle } from 'lucide-react'
 import { parseAndFormatIndianPhone } from '@/lib/formatters'
@@ -45,10 +44,8 @@ export function StudentFormDialog({
   const [admissionDate, setAdmissionDate] = useState('')
   const [admissionNo, setAdmissionNo] = useState('')
   const [whatsappOptIn, setWhatsappOptIn] = useState(false)
-  const [monthlyFee, setMonthlyFee] = useState<number>(0)
-  const [feeDueDay, setFeeDueDay] = useState<number>(5)
+  const [fee, setFee] = useState<number>(1000)
   const [status, setStatus] = useState<'active' | 'inactive'>('active')
-  const [notes, setNotes] = useState('')
 
   // Validation & state
   const [phoneError, setPhoneError] = useState<string | null>(null)
@@ -70,10 +67,8 @@ export function StudentFormDialog({
       setAdmissionDate(studentToEdit.admission_date || new Date().toISOString().split('T')[0])
       setAdmissionNo(studentToEdit.admission_no || '')
       setWhatsappOptIn(!!studentToEdit.whatsapp_opt_in)
-      setMonthlyFee(studentToEdit.monthly_fee ?? 0)
-      setFeeDueDay(studentToEdit.fee_due_day ?? 5)
+      setFee(studentToEdit.monthly_fee ?? 1000)
       setStatus(studentToEdit.status || 'active')
-      setNotes(studentToEdit.notes || '')
     } else {
       setFullName('')
       setClassLevel('Class 10')
@@ -84,10 +79,8 @@ export function StudentFormDialog({
       setAdmissionDate(new Date().toISOString().split('T')[0])
       setAdmissionNo('')
       setWhatsappOptIn(false)
-      setMonthlyFee(0)
-      setFeeDueDay(5)
+      setFee(1000)
       setStatus('active')
-      setNotes('')
     }
     setPhoneError(null)
     setFormError(null)
@@ -173,10 +166,10 @@ export function StudentFormDialog({
         admission_date: admissionDate || null,
         admission_no: admissionNo.trim() || null,
         whatsapp_opt_in: whatsappOptIn,
-        monthly_fee: Number(monthlyFee) || 0,
-        fee_due_day: Math.min(28, Math.max(1, Number(feeDueDay) || 5)),
+        monthly_fee: Number(fee) || 1000,
+        fee_due_day: studentToEdit?.fee_due_day || 5,
         status,
-        notes: notes.trim() || null,
+        notes: studentToEdit?.notes || null,
       }
 
       if (isEditing && studentToEdit?.id) {
@@ -208,7 +201,7 @@ export function StudentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white p-6">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white p-6 sm:p-8">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-slate-900">
             {isEditing ? 'Edit Student' : 'Add New Student'}
@@ -379,7 +372,7 @@ export function StudentFormDialog({
             </div>
           </div>
 
-          {/* Section 2: Parent / Guardian Contact */}
+          {/* Section 2: Parent Contact */}
           <div className="space-y-4 pt-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-1">
               Parent Contact
@@ -388,7 +381,7 @@ export function StudentFormDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="parent_name" className="text-slate-800 font-medium">
-                  Parent / Guardian Name *
+                  Parent Name *
                 </Label>
                 <Input
                   id="parent_name"
@@ -403,7 +396,7 @@ export function StudentFormDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-slate-800 font-medium">
-                  Parent Mobile / WhatsApp Number *
+                  Parent Mobile Number *
                 </Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500 font-mono text-sm">
@@ -457,58 +450,25 @@ export function StudentFormDialog({
             </div>
           </div>
 
-          {/* Section 3: Fees */}
+          {/* Section 3: Fee */}
           <div className="space-y-4 pt-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-1">
-              Fees
+              Fee
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="monthly_fee" className="text-slate-800 font-medium">
-                  Monthly Fee (₹)
-                </Label>
-                <Input
-                  id="monthly_fee"
-                  type="number"
-                  min="0"
-                  step="50"
-                  placeholder="0"
-                  value={monthlyFee}
-                  onChange={(e) => setMonthlyFee(Number(e.target.value))}
-                  className="h-11 text-base"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="fee_due_day" className="text-slate-800 font-medium">
-                  Fee Due Day of Month (1 - 28)
-                </Label>
-                <Input
-                  id="fee_due_day"
-                  type="number"
-                  min="1"
-                  max="28"
-                  value={feeDueDay}
-                  onChange={(e) => setFeeDueDay(Number(e.target.value))}
-                  className="h-11 text-base"
-                  disabled={loading}
-                />
-                <p className="text-xs text-slate-500">Day of the month when tuition fee becomes due.</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-slate-700">
-                Notes (Optional)
+            <div className="space-y-2 max-w-sm">
+              <Label htmlFor="fee" className="text-slate-800 font-medium">
+                Fee (₹) *
               </Label>
-              <Textarea
-                id="notes"
-                placeholder="Any special remarks or instructions..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[70px] text-base"
+              <Input
+                id="fee"
+                type="number"
+                min="0"
+                step="50"
+                placeholder="1000"
+                value={fee}
+                onChange={(e) => setFee(Number(e.target.value))}
+                className="h-11 text-base"
                 disabled={loading}
               />
             </div>

@@ -32,6 +32,21 @@ export interface StudentFormData {
   notes: string
 }
 
+export interface AttendanceRecord {
+  id?: string
+  student_id: string
+  att_date: string
+  status: 'present' | 'absent'
+  marked_by?: string | null
+  created_at?: string
+}
+
+export interface StudentAttendanceItem {
+  student: Student
+  status: 'present' | 'absent'
+  attendanceId?: string
+}
+
 export const CLASS_OPTIONS = [
   'Class 1',
   'Class 2',

@@ -349,11 +349,6 @@ export default function StudentsPage() {
                           {student.admission_no}
                         </span>
                       )}
-                      {student.notes && (
-                        <div className="text-xs text-slate-400 truncate max-w-xs italic mt-0.5">
-                          {student.notes}
-                        </div>
-                      )}
                     </TableCell>
 
                     {/* Class */}
