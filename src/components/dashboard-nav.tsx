@@ -22,7 +22,7 @@ export const NAV_ITEMS = [
   },
   {
     name: 'Message log',
-    href: '/message-log',
+    href: '/messages',
     icon: MessageSquareText,
   },
 ]

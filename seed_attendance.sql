@@ -38,3 +38,4 @@ select
 from students
 where notes = 'SEED_RECORD' and status = 'active'
 on conflict (student_id, att_date) do update set status = excluded.status;
+

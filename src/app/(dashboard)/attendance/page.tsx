@@ -17,8 +17,12 @@ import {
   RotateCcw,
   Check,
   Building,
+  Send,
+  Info,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { SendConfirmDialog } from '@/components/attendance/send-confirm-dialog'
+import { SendResultDialog, type AbsentAlertResult } from '@/components/attendance/send-result-dialog'
 import type { Student } from '@/types/database'
 
 interface AttendanceItem {
@@ -37,11 +41,18 @@ export default function AttendancePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [sendingAlerts, setSendingAlerts] = useState(false)
 
   // Status badge for the date: "Attendance taken (time)" or "Not taken yet"
   const [isTaken, setIsTaken] = useState(false)
   const [takenTime, setTakenTime] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // WhatsApp Alert dialog states
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [resultDialogOpen, setResultDialogOpen] = useState(false)
+  const [alertResult, setAlertResult] = useState<AbsentAlertResult | null>(null)
+  const [retryingAlerts, setRetryingAlerts] = useState(false)
 
   // Initialize date on client mount (Next.js 16 prerender safe)
   useEffect(() => {
@@ -255,46 +266,49 @@ export default function AttendancePage() {
     toast.info('All students set to Present.')
   }
 
-  // Save attendance in ONE upsert call
-  async function handleSaveAttendance() {
-    if (attendanceList.length === 0 || !selectedDate) return
+  // Internal save function that writes to Supabase
+  async function persistAttendanceToDatabase(): Promise<boolean> {
+    if (attendanceList.length === 0 || !selectedDate) return false
 
-    setSaving(true)
     const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
+    // Single upsert payload for all students in the class
+    const payload = attendanceList.map((item) => ({
+      student_id: item.student.id,
+      att_date: selectedDate,
+      status: item.status,
+      marked_by: user?.id || null,
+    }))
+
+    const { error } = await supabase.from('attendance').upsert(payload, {
+      onConflict: 'student_id, att_date',
+    })
+
+    if (error) throw error
+
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    setIsTaken(true)
+    setTakenTime(timeStr)
+    setHasUnsavedChanges(false)
+    return true
+  }
+
+  // Action 1: Save attendance only
+  async function handleSaveAttendanceOnly() {
+    setSaving(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      // Single upsert payload for all students in the class
-      const payload = attendanceList.map((item) => ({
-        student_id: item.student.id,
-        att_date: selectedDate,
-        status: item.status,
-        marked_by: user?.id || null,
-      }))
-
-      const { error } = await supabase.from('attendance').upsert(payload, {
-        onConflict: 'student_id, att_date',
-      })
-
-      if (error) throw error
-
-      const absentCount = attendanceList.filter((item) => item.status === 'absent').length
-      const presentCount = attendanceList.filter((item) => item.status === 'present').length
-
-      const now = new Date()
-      const timeStr = now.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-      setIsTaken(true)
-      setTakenTime(timeStr)
-      setHasUnsavedChanges(false)
-
+      await persistAttendanceToDatabase()
+      const absentCnt = attendanceList.filter((item) => item.status === 'absent').length
+      const presentCnt = attendanceList.filter((item) => item.status === 'present').length
       toast.success(
-        `Attendance saved for ${selectedClass}! (${presentCount} Present, ${absentCount} Absent)`
+        `Attendance saved for ${selectedClass}! (${presentCnt} Present, ${absentCnt} Absent)`
       )
     } catch (err: unknown) {
       console.error('Failed to save attendance:', err)
@@ -305,6 +319,100 @@ export default function AttendancePage() {
     }
   }
 
+  // Action 2: Open confirm dialog for "Save and notify absentees"
+  function handleInitiateSaveAndNotify() {
+    const absentees = attendanceList.filter((i) => i.status === 'absent')
+    if (absentees.length === 0) {
+      toast.info('There are no absent students in this class.')
+      return
+    }
+
+    // Check date eligibility (only today or yesterday)
+    if (todayStr) {
+      const todayDate = new Date(todayStr)
+      const yesterdayDate = new Date(todayDate)
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]
+
+      if (selectedDate !== todayStr && selectedDate !== yesterdayStr) {
+        toast.error('WhatsApp absent alerts can only be sent for today or yesterday.')
+        return
+      }
+    }
+
+    setConfirmDialogOpen(true)
+  }
+
+  // Execute alert sending
+  async function handleExecuteAlerts(isRetry = false) {
+    if (isRetry) {
+      setRetryingAlerts(true)
+    } else {
+      setSendingAlerts(true)
+    }
+
+    try {
+      // 1. Save attendance to database first
+      await persistAttendanceToDatabase()
+
+      // 2. Invoke Edge Function (with fallback to Next.js API route)
+      const supabase = createClient()
+      let data: AbsentAlertResult | null = null
+
+      try {
+        const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
+          'send-absent-alerts',
+          {
+            body: { class_level: selectedClass, date: selectedDate },
+          }
+        )
+
+        if (edgeError) {
+          throw edgeError
+        }
+        data = edgeData
+      } catch (edgeErr) {
+        console.warn('Edge Function call not reachable, using in-app API route:', edgeErr)
+        // Fallback to internal route
+        const apiRes = await fetch('/api/send-absent-alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ class_level: selectedClass, date: selectedDate }),
+        })
+        const apiJson = await apiRes.json()
+        if (!apiRes.ok) {
+          throw new Error(apiJson.error || 'Failed to process absent alerts')
+        }
+        data = apiJson
+      }
+
+      if (!data) {
+        throw new Error('No response received from alert service.')
+      }
+
+      setAlertResult(data)
+      setConfirmDialogOpen(false)
+      setResultDialogOpen(true)
+
+      if (data.sent > 0) {
+        toast.success(
+          data.dry_run
+            ? `Dry run: Simulated alerts for ${data.sent} student(s)!`
+            : `Sent WhatsApp alerts to ${data.sent} parent(s)!`
+        )
+      } else if (data.already_sent > 0 && data.failed === 0) {
+        toast.info('All eligible absent students were already notified earlier.')
+      }
+    } catch (err: unknown) {
+      console.error('Error sending alerts:', err)
+      const msg = err instanceof Error ? err.message : 'Failed to send WhatsApp alerts.'
+      toast.error(msg)
+    } finally {
+      setSendingAlerts(false)
+      setRetryingAlerts(false)
+    }
+  }
+
   // Live Counts
   const presentCount = useMemo(
     () => attendanceList.filter((i) => i.status === 'present').length,
@@ -312,6 +420,13 @@ export default function AttendancePage() {
   )
   const absentCount = useMemo(
     () => attendanceList.filter((i) => i.status === 'absent').length,
+    [attendanceList]
+  )
+  const absentStudentsList = useMemo(
+    () =>
+      attendanceList
+        .filter((i) => i.status === 'absent')
+        .map((i) => ({ student: i.student, status: 'absent' as const })),
     [attendanceList]
   )
 
@@ -331,6 +446,21 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto pb-28">
+      {/* Dry Run Banner (shown if function reports dry run mode) */}
+      {alertResult?.dry_run && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2">
+            <Info className="size-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Dry Run Mode active:</strong> WhatsApp messages are simulated and logged. No real messages are delivered to Meta.
+            </span>
+          </div>
+          <Badge className="bg-amber-200 text-amber-900 border-0 text-[11px]">
+            DRY RUN
+          </Badge>
+        </div>
+      )}
+
       {/* 1. TOP CONTROLS */}
       <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -451,7 +581,7 @@ export default function AttendancePage() {
             type="button"
             variant="outline"
             onClick={handleMarkAllPresent}
-            disabled={loading || saving}
+            disabled={loading || saving || sendingAlerts}
             className="min-h-[44px] gap-1.5 text-xs font-semibold border-slate-300 text-slate-700 bg-white hover:bg-slate-50 cursor-pointer shrink-0"
           >
             <RotateCcw className="size-3.5 text-slate-500" />
@@ -572,10 +702,10 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* 3. STICKY BOTTOM SAVE BAR */}
+      {/* 3. STICKY BOTTOM SAVE & NOTIFY BAR */}
       {attendanceList.length > 0 && (
         <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-slate-300 p-3 sm:p-4 shadow-lg">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="text-sm">
               <div className="flex items-center gap-2 font-bold text-slate-900">
                 <span className="text-emerald-700">Present: {presentCount}</span>
@@ -589,18 +719,51 @@ export default function AttendancePage() {
               </p>
             </div>
 
-            <Button
-              type="button"
-              onClick={handleSaveAttendance}
-              disabled={saving || loading}
-              className="min-h-[46px] px-6 gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md cursor-pointer disabled:opacity-50"
-            >
-              <Save className="size-4" />
-              <span>{saving ? 'Saving...' : 'Save attendance'}</span>
-            </Button>
+            <div className="flex items-center gap-2.5">
+              {/* Action A: Save attendance only */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveAttendanceOnly}
+                disabled={saving || sendingAlerts || loading}
+                className="min-h-[46px] px-4 gap-2 border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm bg-white hover:bg-slate-50 cursor-pointer flex-1 sm:flex-initial"
+              >
+                <Save className="size-4" />
+                <span>{saving ? 'Saving...' : 'Save attendance'}</span>
+              </Button>
+
+              {/* Action B: Save and notify absentees */}
+              <Button
+                type="button"
+                onClick={handleInitiateSaveAndNotify}
+                disabled={absentCount === 0 || saving || sendingAlerts || loading}
+                className="min-h-[46px] px-5 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md cursor-pointer disabled:opacity-40 flex-1 sm:flex-initial"
+              >
+                <Send className="size-4" />
+                <span>{sendingAlerts ? 'Processing...' : 'Save & notify absentees'}</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog before sending WhatsApp alerts */}
+      <SendConfirmDialog
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        absentStudents={absentStudentsList}
+        loading={sendingAlerts}
+        onConfirm={() => handleExecuteAlerts(false)}
+      />
+
+      {/* Result Dialog after sending */}
+      <SendResultDialog
+        open={resultDialogOpen}
+        onOpenChange={setResultDialogOpen}
+        result={alertResult}
+        retrying={retryingAlerts}
+        onRetryFailed={() => handleExecuteAlerts(true)}
+      />
     </div>
   )
 }
