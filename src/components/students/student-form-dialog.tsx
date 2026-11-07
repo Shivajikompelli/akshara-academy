@@ -298,7 +298,7 @@ export function StudentFormDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="school" className="text-slate-700">
-                  School (Optional)
+                  School
                 </Label>
                 <Input
                   id="school"
@@ -312,7 +312,7 @@ export function StudentFormDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="admission_no" className="text-slate-700">
-                  Admission Number (Optional)
+                  Admission Number
                 </Label>
                 <Input
                   id="admission_no"
@@ -359,7 +359,7 @@ export function StudentFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="address" className="text-slate-700">
-                Residential Address (Optional)
+                Residential Address
               </Label>
               <Input
                 id="address"
