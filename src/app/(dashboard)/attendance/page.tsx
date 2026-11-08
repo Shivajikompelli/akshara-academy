@@ -84,9 +84,14 @@ export default function AttendancePage() {
         })
         setAvailableClasses(unique)
 
-        // Select first available class if not set or invalid
+        // Select first available class if not set or invalid (respecting ?class= URL param)
         setSelectedClass((current) => {
           if (current && unique.includes(current)) return current
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            const paramCls = params.get('class')
+            if (paramCls && unique.includes(paramCls)) return paramCls
+          }
           return unique[0] || ''
         })
       } else {
