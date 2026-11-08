@@ -23,10 +23,10 @@ import {
   History,
   PlusCircle,
   Receipt,
-  ArrowUpDown,
+  Calendar,
   Building,
 } from 'lucide-react'
-import { formatCurrency, formatDate } from '@/lib/formatters'
+import { formatCurrency, formatDate, formatPeriod } from '@/lib/formatters'
 import { RecordPaymentDialog } from '@/components/fees/record-payment-dialog'
 import { PaymentHistoryDialog } from '@/components/fees/payment-history-dialog'
 import { CLASS_OPTIONS, type FeeSummaryRow } from '@/types/database'
@@ -38,11 +38,14 @@ export default function FeesPage() {
   const [generatingFees, setGeneratingFees] = useState(false)
   const [todayStr, setTodayStr] = useState<string>('')
 
+  // 1. Month Controls (default current month)
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'pending' | 'partial' | 'paid'>('all')
   const [classFilter, setClassFilter] = useState('all')
-  const [periodFilter, setPeriodFilter] = useState('all')
+  const [viewAllMonths, setViewAllMonths] = useState(false)
   const [sortBy, setSortBy] = useState<'overdue' | 'name' | 'balance'>('overdue')
 
   // Dialog states
@@ -51,17 +54,20 @@ export default function FeesPage() {
   const [selectedFee, setSelectedFee] = useState<FeeSummaryRow | null>(null)
 
   useEffect(() => {
-    setTodayStr(new Date().toISOString().split('T')[0])
+    const now = new Date()
+    setTodayStr(now.toISOString().split('T')[0])
+    const currentYear = now.getFullYear()
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
+    setSelectedMonth(`${currentYear}-${currentMonth}`)
   }, [])
 
   // Calculate days overdue for a given due_date
   const getDaysOverdue = useCallback((dueDate: string) => {
-    const today = new Date().toISOString().split('T')[0]
-    if (dueDate >= today) return 0
+    if (!todayStr || dueDate >= todayStr) return 0
     const dueTime = new Date(dueDate).getTime()
-    const nowTime = new Date(today).getTime()
+    const nowTime = new Date(todayStr).getTime()
     return Math.max(0, Math.floor((nowTime - dueTime) / (1000 * 60 * 60 * 24)))
-  }, [])
+  }, [todayStr])
 
   // Fetch fees from fee_summary view and enrich with student class & phone
   const fetchFeesData = useCallback(async () => {
@@ -124,22 +130,22 @@ export default function FeesPage() {
     fetchFeesData()
   }, [fetchFeesData])
 
-  // Generate monthly fees for active students
+  // "Generate fees for this month" action
   async function handleGenerateMonthlyFees() {
+    if (!selectedMonth) return
     setGeneratingFees(true)
     const supabase = createClient()
+    const targetMonthDate = `${selectedMonth}-01`
 
     try {
-      // First attempt RPC call to generate_monthly_fees
-      const { data, error } = await supabase.rpc('generate_monthly_fees')
+      // Call database function generate_monthly_fees(p_month)
+      const { data, error } = await supabase.rpc('generate_monthly_fees', {
+        p_month: targetMonthDate,
+      })
 
       if (error) {
         // Fallback: manually insert monthly fees for active students where monthly_fee > 0
-        const now = new Date()
-        const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-          .toISOString()
-          .split('T')[0]
-
+        const [y, m] = selectedMonth.split('-').map(Number)
         const { data: activeStudents, error: fetchErr } = await supabase
           .from('students')
           .select('id, monthly_fee, fee_due_day')
@@ -151,12 +157,10 @@ export default function FeesPage() {
         if (activeStudents && activeStudents.length > 0) {
           const rows = activeStudents.map((s) => {
             const dueDay = Math.min(28, Math.max(1, s.fee_due_day || 5))
-            const due = new Date(now.getFullYear(), now.getMonth(), dueDay)
-              .toISOString()
-              .split('T')[0]
+            const due = new Date(y, m - 1, dueDay).toISOString().split('T')[0]
             return {
               student_id: s.id,
-              period: firstOfMonth,
+              period: targetMonthDate,
               amount_due: s.monthly_fee,
               due_date: due,
             }
@@ -168,9 +172,20 @@ export default function FeesPage() {
 
           if (insertErr) throw insertErr
         }
+        toast.success(`Generated monthly fees for ${formatPeriod(targetMonthDate)}!`)
+      } else {
+        const rowsCreated = typeof data === 'number' ? data : 0
+        if (rowsCreated > 0) {
+          toast.success(
+            `Generated ${rowsCreated} fee row(s) for ${formatPeriod(targetMonthDate)}!`
+          )
+        } else {
+          toast.info(
+            `All active students already have fee rows for ${formatPeriod(targetMonthDate)}.`
+          )
+        }
       }
 
-      toast.success('Monthly fees generated successfully for active students!')
       await fetchFeesData()
     } catch (err: unknown) {
       console.error('Failed to generate fees:', err)
@@ -181,45 +196,58 @@ export default function FeesPage() {
     }
   }
 
-  // Extract distinct periods for period filter
-  const availablePeriods = useMemo(() => {
-    const set = new Set<string>()
-    fees.forEach((f) => {
-      if (f.period) set.add(f.period)
+  // Fees for the selected month
+  const monthFees = useMemo(() => {
+    if (!selectedMonth) return []
+    return fees.filter((f) => f.period.startsWith(selectedMonth))
+  }, [fees, selectedMonth])
+
+  // 2. Summary cards strictly for the selected month
+  const monthStats = useMemo(() => {
+    let totalDue = 0
+    let totalPaid = 0
+    let totalBalance = 0
+    let overdueCount = 0
+
+    monthFees.forEach((f) => {
+      totalDue += f.amount_due
+      totalPaid += f.amount_paid
+      totalBalance += f.balance
+      if (f.status === 'overdue') {
+        overdueCount++
+      }
     })
-    return Array.from(set).sort().reverse()
-  }, [fees])
 
-  // Filter and sort fees
+    return {
+      totalDue,
+      totalPaid,
+      totalBalance,
+      overdueCount,
+    }
+  }, [monthFees])
+
+  // 3. Filtered & Sorted Fees List
   const filteredFees = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim()
+    const baseList = viewAllMonths ? fees : monthFees
 
-    return fees
-      .filter((item) => {
-        // Status filter
-        if (statusFilter !== 'all' && item.status !== statusFilter) {
+    return baseList
+      .filter((fee) => {
+        // Status Filter
+        if (statusFilter !== 'all' && fee.status !== statusFilter) {
           return false
         }
 
-        // Class filter
-        if (classFilter !== 'all' && item.class_level !== classFilter) {
+        // Class Filter
+        if (classFilter !== 'all' && fee.class_level !== classFilter) {
           return false
         }
 
-        // Period filter
-        if (periodFilter !== 'all' && item.period !== periodFilter) {
-          return false
-        }
-
-        // Search query
-        if (query) {
-          const matchName = item.full_name?.toLowerCase().includes(query)
-          const matchParent = item.parent_name?.toLowerCase().includes(query)
-          const matchPhone = item.phone?.toLowerCase().includes(query)
-          const matchClass = item.class_level?.toLowerCase().includes(query)
-          if (!matchName && !matchParent && !matchPhone && !matchClass) {
-            return false
-          }
+        // Search Query (Student name, parent phone)
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim()
+          const nameMatch = fee.full_name.toLowerCase().includes(q)
+          const phoneMatch = fee.phone?.toLowerCase().includes(q)
+          if (!nameMatch && !phoneMatch) return false
         }
 
         return true
@@ -231,7 +259,8 @@ export default function FeesPage() {
         if (sortBy === 'balance') {
           return b.balance - a.balance
         }
-        // Default: Sort by days overdue descending
+
+        // Default Sort: Overdue first, longest overdue at the top
         const overdueA = a.status === 'overdue' ? getDaysOverdue(a.due_date) : -1
         const overdueB = b.status === 'overdue' ? getDaysOverdue(b.due_date) : -1
 
@@ -239,37 +268,10 @@ export default function FeesPage() {
           return overdueB - overdueA
         }
 
-        // Secondary sort: balance descending
+        // Secondary: balance descending
         return b.balance - a.balance
       })
-  }, [fees, statusFilter, classFilter, periodFilter, searchQuery, sortBy, getDaysOverdue])
-
-  // Overall Financial Stats
-  const stats = useMemo(() => {
-    let totalDue = 0
-    let totalPaid = 0
-    let totalBalance = 0
-    let overdueCount = 0
-    let overdueBalance = 0
-
-    fees.forEach((f) => {
-      totalDue += f.amount_due
-      totalPaid += f.amount_paid
-      totalBalance += f.balance
-      if (f.status === 'overdue') {
-        overdueCount++
-        overdueBalance += f.balance
-      }
-    })
-
-    return {
-      totalDue,
-      totalPaid,
-      totalBalance,
-      overdueCount,
-      overdueBalance,
-    }
-  }, [fees])
+  }, [fees, monthFees, viewAllMonths, statusFilter, classFilter, searchQuery, sortBy, getDaysOverdue])
 
   // Open Record Payment
   function handleOpenRecordPayment(fee: FeeSummaryRow) {
@@ -320,92 +322,161 @@ export default function FeesPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Fees Dashboard</h1>
-            <Badge variant="secondary" className="text-xs bg-slate-200 text-slate-800 font-semibold">
-              {fees.length} Records
-            </Badge>
+      {/* 1. TOP HEADER & MONTH CONTROLS */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Fees Dashboard</h1>
+              <Badge variant="secondary" className="text-xs bg-slate-200 text-slate-800 font-semibold">
+                {viewAllMonths ? `${fees.length} Total` : `${monthFees.length} in ${formatPeriod(selectedMonth + '-01')}`}
+              </Badge>
+            </div>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Track fee collections, record receipts, and manage outstanding balances.
+            </p>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Track tuition fee collection, record payments, and manage overdue balances.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={fetchFeesData}
+              disabled={loading}
+              className="min-h-[44px] gap-2 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+            >
+              <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleGenerateMonthlyFees}
+              disabled={generatingFees || loading || !selectedMonth}
+              className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs cursor-pointer"
+            >
+              <PlusCircle className="size-4" />
+              <span>
+                {generatingFees
+                  ? 'Generating...'
+                  : `Generate fees for this month`}
+              </span>
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={fetchFeesData}
-            disabled={loading}
-            className="min-h-[44px] gap-2 border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
-          >
-            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
+        {/* Month Selector Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2">
+            <Calendar className="size-4 text-slate-500 shrink-0" />
+            <label htmlFor="monthSelector" className="text-xs font-bold text-slate-700">
+              Selected Month:
+            </label>
+            <input
+              id="monthSelector"
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-9 px-3 rounded-md border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            />
+          </div>
 
-          <Button
-            type="button"
-            onClick={handleGenerateMonthlyFees}
-            disabled={generatingFees || loading}
-            className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm"
-          >
-            <PlusCircle className="size-4" />
-            <span>{generatingFees ? 'Generating...' : 'Generate Monthly Fees'}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setViewAllMonths(!viewAllMonths)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors cursor-pointer ${
+                viewAllMonths
+                  ? 'bg-blue-50 text-blue-800 border-blue-300'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {viewAllMonths ? 'Showing All Months' : 'Showing Selected Month Only'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
+      {/* 2. SUMMARY CARDS FOR THE SELECTED MONTH */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Due */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500 block uppercase">Total Expected</span>
+          <span className="text-xs font-semibold text-slate-500 block uppercase">
+            Total Due {viewAllMonths ? '' : `(${formatPeriod(selectedMonth + '-01')})`}
+          </span>
           <span className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 block">
-            {formatCurrency(stats.totalDue)}
+            {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_due, 0) : monthStats.totalDue)}
           </span>
           <span className="text-[11px] text-slate-400">Total fees billed</span>
         </div>
 
+        {/* Collected */}
         <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 shadow-xs">
           <span className="text-xs font-semibold text-emerald-800 block uppercase">Collected</span>
           <span className="text-xl sm:text-2xl font-bold text-emerald-700 mt-1 block">
-            {formatCurrency(stats.totalPaid)}
+            {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_paid, 0) : monthStats.totalPaid)}
           </span>
           <span className="text-[11px] text-emerald-600 font-medium">Received so far</span>
         </div>
 
+        {/* Outstanding Balance */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500 block uppercase">Total Balance</span>
+          <span className="text-xs font-semibold text-slate-500 block uppercase">Outstanding</span>
           <span className="text-xl sm:text-2xl font-bold text-slate-800 mt-1 block">
-            {formatCurrency(stats.totalBalance)}
+            {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.balance, 0) : monthStats.totalBalance)}
           </span>
           <span className="text-[11px] text-slate-400">Uncollected fees</span>
         </div>
 
+        {/* Overdue Count */}
         <div className="bg-rose-50/70 p-4 rounded-xl border border-rose-300 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-800 uppercase">Overdue</span>
             <Badge className="bg-rose-600 text-white font-bold text-[10px] px-1.5 py-0.2">
-              {stats.overdueCount} Students
+              {viewAllMonths
+                ? fees.filter((f) => f.status === 'overdue').length
+                : monthStats.overdueCount}{' '}
+              Students
             </Badge>
           </div>
           <span className="text-xl sm:text-2xl font-bold text-rose-700 mt-1 block">
-            {formatCurrency(stats.overdueBalance)}
+            {viewAllMonths
+              ? `${fees.filter((f) => f.status === 'overdue').length} Overdue`
+              : `${monthStats.overdueCount} Overdue`}
           </span>
           <span className="text-[11px] text-rose-600 font-medium">Requires immediate follow-up</span>
         </div>
       </div>
 
-      {/* Filters Toolbar */}
+      {/* Hint if zero fee rows for the selected month */}
+      {!loading && monthFees.length === 0 && !viewAllMonths && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="size-5 text-amber-600 shrink-0" />
+            <span>
+              No fee records found for <strong>{formatPeriod(selectedMonth + '-01')}</strong>. Tap{' '}
+              <strong>&quot;Generate fees for this month&quot;</strong> to generate records for all active students.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleGenerateMonthlyFees}
+            disabled={generatingFees}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer shrink-0 ml-3"
+          >
+            Generate Now
+          </Button>
+        </div>
+      )}
+
+      {/* 3. FILTERS & SEARCH TOOLBAR */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
         {/* Status Filter Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-600">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'all'
                 ? 'bg-white text-slate-900 font-bold shadow-xs'
                 : 'hover:text-slate-900'
@@ -415,21 +486,21 @@ export default function FeesPage() {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('overdue')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
-              statusFilter === 'overdue'
-                ? 'bg-white text-rose-800 font-bold shadow-xs'
+            onClick={() => setStatusFilter('paid')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+              statusFilter === 'paid'
+                ? 'bg-white text-emerald-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
             }`}
           >
-            Overdue ({fees.filter((f) => f.status === 'overdue').length})
+            Paid ({fees.filter((f) => f.status === 'paid').length})
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('pending')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'pending'
-                ? 'bg-white text-slate-800 font-bold shadow-xs'
+                ? 'bg-white text-slate-900 font-bold shadow-xs'
                 : 'hover:text-slate-900'
             }`}
           >
@@ -438,7 +509,7 @@ export default function FeesPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('partial')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'partial'
                 ? 'bg-white text-amber-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
@@ -448,27 +519,28 @@ export default function FeesPage() {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter('paid')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
-              statusFilter === 'paid'
-                ? 'bg-white text-emerald-800 font-bold shadow-xs'
+            onClick={() => setStatusFilter('overdue')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+              statusFilter === 'overdue'
+                ? 'bg-white text-rose-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
             }`}
           >
-            Paid ({fees.filter((f) => f.status === 'paid').length})
+            Overdue ({fees.filter((f) => f.status === 'overdue').length})
           </button>
         </div>
 
-        {/* Search, Class, Period and Sort Controls */}
+        {/* Search, Class Dropdown & Sort */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
-          {/* Search Input */}
-          <div className="sm:col-span-5 relative">
+          {/* Search box (name or phone) */}
+          <div className="sm:col-span-6 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <Input
-              placeholder="Search student, parent, or class..."
+              type="text"
+              placeholder="Search by student name or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-11 text-base bg-white border-slate-300"
+              className="pl-9 h-11 text-sm bg-white"
             />
           </div>
 
@@ -477,7 +549,7 @@ export default function FeesPage() {
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
             >
               <option value="all">All Classes</option>
               {CLASS_OPTIONS.map((c) => (
@@ -488,28 +560,12 @@ export default function FeesPage() {
             </select>
           </div>
 
-          {/* Period Filter */}
-          <div className="sm:col-span-2">
-            <select
-              value={periodFilter}
-              onChange={(e) => setPeriodFilter(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
-            >
-              <option value="all">All Months</option>
-              {availablePeriods.map((p) => (
-                <option key={p} value={p}>
-                  {formatDate(p)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sort By */}
-          <div className="sm:col-span-2">
+          {/* Sort By Dropdown (Default: Overdue first, longest overdue at top) */}
+          <div className="sm:col-span-3">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
             >
               <option value="overdue">Sort: Overdue First</option>
               <option value="balance">Sort: Highest Balance</option>
@@ -519,208 +575,174 @@ export default function FeesPage() {
         </div>
       </div>
 
-      {/* Main Fees Table / Card List */}
+      {/* 4. FEES LIST (Cards on mobile, Table on desktop) */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 shadow-xs">
-          <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-blue-600" />
-          <p className="text-sm font-medium">Loading fee records...</p>
+        <div className="p-12 text-center text-sm text-slate-500 bg-white rounded-xl border border-slate-200">
+          <RefreshCw className="size-6 animate-spin mx-auto text-blue-600 mb-2" />
+          <span>Loading fees records...</span>
         </div>
       ) : filteredFees.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center shadow-xs">
-          <Receipt className="size-10 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-bold text-slate-900">No fee records found</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-            {fees.length === 0
-              ? 'Click "Generate Monthly Fees" above to create fee records for all active students.'
-              : 'Try clearing your search query or status filters.'}
+        <div className="p-12 text-center bg-white rounded-xl border border-dashed border-slate-300">
+          <Receipt className="size-10 mx-auto text-slate-300 mb-2" />
+          <h3 className="font-bold text-slate-800 text-base">No fee records match your filters</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            Try adjusting your search query, status tabs, or selected month.
           </p>
-          {fees.length === 0 && (
-            <div className="mt-4">
-              <Button
-                onClick={handleGenerateMonthlyFees}
-                disabled={generatingFees}
-                className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold"
-              >
-                <PlusCircle className="size-4 mr-1.5" /> Generate Monthly Fees
-              </Button>
-            </div>
-          )}
         </div>
       ) : (
         <>
-          {/* Desktop Table View */}
-          <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <Table>
-              <TableHeader className="bg-slate-50">
+              <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="font-semibold text-slate-700">Student</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Period</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Amount Due</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Paid</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Balance</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Due Date</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                  <TableHead className="text-right font-semibold text-slate-700">Actions</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Student</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Class</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Parent Phone</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs text-right">Amount Due</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs text-right">Paid</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs text-right">Balance</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Due Date</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Status</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredFees.map((row) => (
-                  <TableRow key={row.fee_id} className="hover:bg-slate-50/70">
-                    {/* Student */}
-                    <TableCell className="py-3.5">
-                      <div className="font-bold text-slate-900 text-sm">{row.full_name}</div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                        {row.class_level && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0.1 bg-blue-50 text-blue-700 border-blue-200">
-                            {row.class_level}
-                          </Badge>
-                        )}
-                        <span>{row.parent_name}</span>
-                        {row.phone && <span className="font-mono text-slate-400">({row.phone})</span>}
-                      </div>
-                    </TableCell>
-
-                    {/* Period */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-xs text-slate-700 font-medium">
-                      {formatDate(row.period)}
-                    </TableCell>
-
-                    {/* Amount Due */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-sm font-semibold text-slate-800">
-                      {formatCurrency(row.amount_due)}
-                    </TableCell>
-
-                    {/* Paid */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-sm font-bold text-emerald-700">
-                      {formatCurrency(row.amount_paid)}
-                    </TableCell>
-
-                    {/* Balance */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-sm font-bold">
-                      <span className={row.balance > 0 ? 'text-rose-600' : 'text-slate-400'}>
-                        {formatCurrency(row.balance)}
-                      </span>
-                    </TableCell>
-
-                    {/* Due Date */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-xs text-slate-600">
-                      {formatDate(row.due_date)}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="py-3.5 whitespace-nowrap">
-                      {getStatusBadge(row.status, row.due_date)}
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="py-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {row.status !== 'paid' ? (
+                {filteredFees.map((fee) => {
+                  const isUnpaidOrPartial = fee.status !== 'paid'
+                  return (
+                    <TableRow
+                      key={fee.fee_id}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      onClick={() => handleOpenHistory(fee)}
+                    >
+                      <TableCell className="font-bold text-slate-900 text-sm py-3.5">
+                        {fee.full_name}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600 font-medium">
+                        {fee.class_level || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600 font-mono">
+                        {fee.phone || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-slate-800 text-right">
+                        {formatCurrency(fee.amount_due)}
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-emerald-700 text-right">
+                        {formatCurrency(fee.amount_paid)}
+                      </TableCell>
+                      <TableCell className="text-xs font-extrabold text-right">
+                        <span className={fee.balance > 0 ? 'text-rose-600' : 'text-slate-400'}>
+                          {formatCurrency(fee.balance)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600">
+                        {formatDate(fee.due_date)}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(fee.status, fee.due_date)}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        {isUnpaidOrPartial ? (
                           <Button
+                            type="button"
                             size="sm"
-                            onClick={() => handleOpenRecordPayment(row)}
-                            className="min-h-[36px] bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5 cursor-pointer"
+                            onClick={() => handleOpenRecordPayment(fee)}
+                            className="min-h-[38px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 cursor-pointer shadow-xs"
                           >
-                            <CreditCard className="size-3.5" /> Record Payment
+                            <CreditCard className="size-3.5" />
+                            <span>Record payment</span>
                           </Button>
                         ) : (
-                          <span className="text-xs text-emerald-700 font-semibold px-2 py-1 bg-emerald-50 rounded-md border border-emerald-200">
-                            Paid in Full
-                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenHistory(fee)}
+                            className="min-h-[38px] px-3 text-slate-600 text-xs gap-1.5 cursor-pointer"
+                          >
+                            <History className="size-3.5" />
+                            <span>History</span>
+                          </Button>
                         )}
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenHistory(row)}
-                          className="min-h-[36px] text-xs border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
-                          title="Payment History"
-                        >
-                          <History className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
 
-          {/* Mobile Cards View */}
-          <div className="grid grid-cols-1 gap-3 md:hidden">
-            {filteredFees.map((row) => (
-              <div
-                key={row.fee_id}
-                className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-xs"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 leading-tight">
-                      {row.full_name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {row.class_level && (
-                        <Badge variant="outline" className="text-xs font-semibold text-blue-800 bg-blue-50 border-blue-200">
-                          {row.class_level}
-                        </Badge>
-                      )}
-                      <span className="text-xs text-slate-500">{formatDate(row.period)}</span>
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
+            {filteredFees.map((fee) => {
+              const isUnpaidOrPartial = fee.status !== 'paid'
+              return (
+                <div
+                  key={fee.fee_id}
+                  onClick={() => handleOpenHistory(fee)}
+                  className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 cursor-pointer active:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base">{fee.full_name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {fee.class_level || 'Student'} • {fee.phone || 'No phone'}
+                      </p>
+                    </div>
+                    {getStatusBadge(fee.status, fee.due_date)}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 py-2 bg-slate-50 rounded-lg text-center text-xs border border-slate-100">
+                    <div>
+                      <span className="text-[11px] text-slate-400 block">Due</span>
+                      <span className="font-semibold text-slate-800">
+                        {formatCurrency(fee.amount_due)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block">Paid</span>
+                      <span className="font-semibold text-emerald-700">
+                        {formatCurrency(fee.amount_paid)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block">Balance</span>
+                      <span className="font-bold text-rose-700">
+                        {formatCurrency(fee.balance)}
+                      </span>
                     </div>
                   </div>
 
-                  {getStatusBadge(row.status, row.due_date)}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-slate-50 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Due</span>
-                    <span className="font-semibold text-slate-800">{formatCurrency(row.amount_due)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Paid</span>
-                    <span className="font-semibold text-emerald-700">{formatCurrency(row.amount_paid)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Balance</span>
-                    <span className={`font-bold ${row.balance > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
-                      {formatCurrency(row.balance)}
+                  <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs text-slate-500">
+                      Due: <strong>{formatDate(fee.due_date)}</strong>
                     </span>
+
+                    {isUnpaidOrPartial ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleOpenRecordPayment(fee)}
+                        className="min-h-[40px] px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <CreditCard className="size-3.5" />
+                        <span>Record payment</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenHistory(fee)}
+                        className="min-h-[40px] px-3 text-slate-600 text-xs gap-1.5 cursor-pointer"
+                      >
+                        <History className="size-3.5" />
+                        <span>History</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>Due by: {formatDate(row.due_date)}</span>
-                  <span>Parent: {row.parent_name}</span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                  {row.status !== 'paid' ? (
-                    <Button
-                      type="button"
-                      onClick={() => handleOpenRecordPayment(row)}
-                      className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm gap-2"
-                    >
-                      <CreditCard className="size-4" />
-                      <span>Record Payment</span>
-                    </Button>
-                  ) : (
-                    <div className="flex-1 text-center py-2 text-xs font-bold text-emerald-800 bg-emerald-50 rounded-lg border border-emerald-200">
-                      Paid in Full
-                    </div>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOpenHistory(row)}
-                    className="min-h-[44px] px-3.5 border-slate-300 text-slate-700 hover:bg-slate-50"
-                    title="View History"
-                  >
-                    <History className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}
@@ -733,11 +755,12 @@ export default function FeesPage() {
         onPaymentRecorded={fetchFeesData}
       />
 
-      {/* Payment History Dialog */}
+      {/* Payment History & Edit Amount Dialog */}
       <PaymentHistoryDialog
         open={historyDialogOpen}
         onOpenChange={setHistoryDialogOpen}
         fee={selectedFee}
+        onFeeUpdated={fetchFeesData}
       />
     </div>
   )

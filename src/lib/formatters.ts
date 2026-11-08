@@ -88,3 +88,23 @@ export function formatDate(dateStr: string | null | undefined): string {
     return dateStr
   }
 }
+
+/**
+ * Formats a period string (YYYY-MM-01) into Month Year (e.g. November 2026).
+ */
+export function formatPeriod(periodStr: string | null | undefined): string {
+  if (!periodStr) return '-'
+  try {
+    const [year, month] = periodStr.split('-')
+    if (year && month) {
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1)
+      return date.toLocaleDateString('en-IN', {
+        month: 'long',
+        year: 'numeric',
+      })
+    }
+    return periodStr
+  } catch {
+    return periodStr
+  }
+}
