@@ -237,25 +237,25 @@ export default function HomePage() {
       </div>
 
       {/* 1. HERO CARD with purple gradient: today's date, three numbers, two actions */}
-      <AksharaCard variant="hero" className="p-6 sm:p-8">
+      <AksharaCard variant="hero" className="p-6 sm:p-7">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <span className="text-xs font-bold text-white/80 uppercase tracking-widest block">
               {formattedToday || 'Today'}
             </span>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
               Daily Attendance & Fees
             </h2>
           </div>
 
           {/* Two Actions: "Take attendance" and "Send fee reminders" */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <Link href="/attendance">
               <button
                 type="button"
-                className="min-h-[44px] px-5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-base flex items-center gap-2 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                className="min-h-[44px] px-4.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-sm flex items-center gap-2 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
               >
-                <CalendarCheck className="size-4.5 stroke-[2.5]" />
+                <CalendarCheck className="size-4 stroke-[2.5]" />
                 <span>Take attendance</span>
               </button>
             </Link>
@@ -263,9 +263,9 @@ export default function HomePage() {
             <Link href="/fees">
               <button
                 type="button"
-                className="min-h-[44px] px-5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-base flex items-center gap-2 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
+                className="min-h-[44px] px-4.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-sm flex items-center gap-2 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
               >
-                <BellRing className="size-4.5" />
+                <BellRing className="size-4" />
                 <span>Send fee reminders</span>
               </button>
             </Link>
@@ -273,12 +273,12 @@ export default function HomePage() {
         </div>
 
         {/* Three Numbers: Enrolled / Present / Absent (show 'Not taken yet' if not taken) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-8 pt-6 border-t border-white/20">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-6 pt-5 border-t border-white/20">
           <div className="bg-white/10 sm:bg-transparent rounded-[16px] p-4 sm:p-0">
             <span className="text-xs font-medium text-white/80 block uppercase tracking-wider">
               Enrolled
             </span>
-            <span className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 block">
+            <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
               {data.loading ? '—' : data.enrolledCount}
             </span>
             <span className="text-xs text-white/70 font-normal mt-0.5 block">
@@ -291,11 +291,11 @@ export default function HomePage() {
               Present Today
             </span>
             {data.loading ? (
-              <span className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
                 —
               </span>
             ) : attendanceTakenToday ? (
-              <span className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
                 {data.presentCount}
               </span>
             ) : (
@@ -314,12 +314,12 @@ export default function HomePage() {
               Absent Today
             </span>
             {data.loading ? (
-              <span className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
                 —
               </span>
             ) : attendanceTakenToday ? (
               <span
-                className={`text-2xl sm:text-4xl font-bold tracking-tight mt-1 block ${
+                className={`text-2xl font-bold tracking-tight mt-1 block ${
                   data.absentCount > 0 ? 'text-amber-200' : 'text-white'
                 }`}
               >
@@ -379,7 +379,7 @@ export default function HomePage() {
       {/* 3. LIST OF CLASSES with "Taken 9:40" or "Not taken yet" and an Open button */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-lg font-bold text-[var(--text)] tracking-tight">
+          <h3 className="text-base font-bold text-[var(--text)] tracking-tight">
             Today&apos;s Class Attendance
           </h3>
           <span className="text-xs font-normal text-[var(--text-secondary)]">
@@ -405,8 +405,8 @@ export default function HomePage() {
                 className="p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-[var(--primary-soft)]/40 transition-colors"
               >
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-bold text-base text-[var(--text)]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-[var(--text)]">
                       {cls.className}
                     </span>
                     <span className="text-xs font-normal text-[var(--text-secondary)]">

@@ -191,7 +191,7 @@ export function SendFeeRemindersDialog({
                     <strong>Dry Run Mode active:</strong> Messages are logged in database. No real WhatsApp messages were sent.
                   </span>
                 </div>
-                <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px]">
+                <Badge className="bg-amber-200 text-amber-900 border-0 text-xs">
                   DRY RUN
                 </Badge>
               </div>
@@ -200,7 +200,7 @@ export function SendFeeRemindersDialog({
             {/* Counts Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
               <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                <span className="text-[11px] text-emerald-700 font-semibold block uppercase">
+                <span className="text-xs text-emerald-700 font-semibold block uppercase">
                   Sent
                 </span>
                 <span className="text-2xl font-bold text-emerald-800 mt-0.5 block">
@@ -209,7 +209,7 @@ export function SendFeeRemindersDialog({
               </div>
 
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-600 font-semibold block uppercase">
+                <span className="text-xs text-slate-600 font-semibold block uppercase">
                   Already Sent
                 </span>
                 <span className="text-2xl font-bold text-slate-800 mt-0.5 block">
@@ -218,7 +218,7 @@ export function SendFeeRemindersDialog({
               </div>
 
               <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
-                <span className="text-[11px] text-rose-700 font-semibold block uppercase">
+                <span className="text-xs text-rose-700 font-semibold block uppercase">
                   Failed
                 </span>
                 <span className="text-2xl font-bold text-rose-800 mt-0.5 block">
@@ -227,7 +227,7 @@ export function SendFeeRemindersDialog({
               </div>
 
               <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <span className="text-[11px] text-amber-700 font-semibold block uppercase">
+                <span className="text-xs text-amber-700 font-semibold block uppercase">
                   No Consent
                 </span>
                 <span className="text-2xl font-bold text-amber-800 mt-0.5 block">
@@ -292,7 +292,7 @@ export function SendFeeRemindersDialog({
                     <strong>Dry Run Mode:</strong> Reminders will be logged as dry-run. No real messages will reach Meta.
                   </span>
                 </div>
-                <Badge className="bg-amber-200 text-amber-900 border-0 text-[10px]">
+                <Badge className="bg-amber-200 text-amber-900 border-0 text-xs">
                   DRY RUN
                 </Badge>
               </div>
@@ -311,7 +311,7 @@ export function SendFeeRemindersDialog({
                 <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 border border-dashed rounded-xl">
                   <CheckCircle2 className="size-8 mx-auto text-emerald-500 mb-1" />
                   <p className="font-semibold text-slate-700">No fee reminders are due today.</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Either fees are not yet at offset 0 (due date) or offset 2, or reminders were already sent today.
                   </p>
                 </div>
@@ -327,20 +327,20 @@ export function SendFeeRemindersDialog({
                           <span className="font-bold text-slate-900 text-sm">
                             {r.student_name}
                           </span>
-                          <Badge variant="outline" className="text-[10px] bg-slate-50">
+                          <Badge variant="outline" className="text-xs bg-slate-50">
                             {r.class_level}
                           </Badge>
                           <Badge
                             className={
                               r.reminder_number === 1
-                                ? 'bg-blue-100 text-blue-800 border-0 text-[10px]'
-                                : 'bg-rose-100 text-rose-800 border-0 text-[10px]'
+                                ? 'bg-blue-100 text-blue-800 border-0 text-xs'
+                                : 'bg-rose-100 text-rose-800 border-0 text-xs'
                             }
                           >
                             Reminder {r.reminder_number} of 2
                           </Badge>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {r.period} • Due on {r.due_date}
                         </p>
                       </div>
@@ -349,7 +349,7 @@ export function SendFeeRemindersDialog({
                         <span className="font-bold text-rose-700 block">
                           {formatCurrency(r.balance)}
                         </span>
-                        <span className="text-[10px] text-slate-400">Balance</span>
+                        <span className="text-xs text-slate-400">Balance</span>
                       </div>
                     </div>
                   ))}
@@ -363,7 +363,7 @@ export function SendFeeRemindersDialog({
                 <span className="font-bold text-amber-900 block">
                   Skipped (No WhatsApp Consent): {previewData.skipped_no_consent_students.length} student(s)
                 </span>
-                <p className="text-[11px] text-amber-800">
+                <p className="text-xs text-amber-800">
                   {previewData.skipped_no_consent_students.join(', ')}
                 </p>
               </div>
@@ -375,7 +375,7 @@ export function SendFeeRemindersDialog({
                 <span className="font-bold text-slate-700 block">
                   Already Reminded Today: {previewData.already_sent_students.length} student(s)
                 </span>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   {previewData.already_sent_students.join(', ')}
                 </p>
               </div>

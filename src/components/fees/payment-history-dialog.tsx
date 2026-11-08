@@ -250,19 +250,19 @@ export function PaymentHistoryDialog({
 
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center text-xs">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Due</span>
+                  <span className="text-slate-400 block text-xs">Due</span>
                   <span className="font-bold text-slate-800">
                     {formatCurrency(fee.amount_due)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Paid</span>
+                  <span className="text-slate-400 block text-xs">Paid</span>
                   <span className="font-bold text-emerald-700">
                     {formatCurrency(fee.amount_paid)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Balance</span>
+                  <span className="text-slate-400 block text-xs">Balance</span>
                   <span className="font-extrabold text-rose-700">
                     {formatCurrency(fee.balance)}
                   </span>
@@ -305,7 +305,7 @@ export function PaymentHistoryDialog({
                           Cancel
                         </Button>
                       </div>
-                      <p className="text-[11px] text-blue-700">
+                      <p className="text-xs text-blue-700">
                         Allowed before any payment is recorded (e.g. for scholarships or discounts).
                       </p>
                     </div>
@@ -354,12 +354,12 @@ export function PaymentHistoryDialog({
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[10px] uppercase font-bold text-slate-700 bg-slate-100"
+                            className="text-xs uppercase font-bold text-slate-700 bg-slate-100"
                           >
                             {p.mode}
                           </Badge>
                         </div>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           Paid on {formatDate(p.paid_on)}
                           {p.reference ? ` • Ref: ${p.reference}` : ''}
                         </p>
@@ -416,12 +416,12 @@ export function PaymentHistoryDialog({
                               {formatPeriod(pastFee.period)}
                             </span>
                             {isCurrent && (
-                              <Badge className="bg-blue-600 text-white text-[9px] px-1 py-0 font-bold">
+                              <Badge className="bg-blue-600 text-white text-xs px-1.5 py-0 font-bold">
                                 Current
                               </Badge>
                             )}
                           </div>
-                          <span className="text-[11px] text-slate-500 block">
+                          <span className="text-xs text-slate-500 block">
                             Due: {formatCurrency(pastFee.amount_due)} • Paid: {formatCurrency(pastFee.amount_paid)}
                           </span>
                         </div>
@@ -436,7 +436,7 @@ export function PaymentHistoryDialog({
                               ? `Bal: ${formatCurrency(pastFee.balance)}`
                               : 'Cleared'}
                           </span>
-                          <span className="text-[10px] text-slate-400 capitalize">
+                          <span className="text-xs text-slate-400 capitalize">
                             {pastFee.status}
                           </span>
                         </div>

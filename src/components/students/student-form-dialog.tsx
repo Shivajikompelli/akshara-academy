@@ -210,7 +210,7 @@ export function StudentFormDialog({
               <User className="size-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-[var(--text)]">
+              <DialogTitle className="text-lg font-bold text-[var(--text)]">
                 {isEditing ? 'Edit Student' : 'Add New Student'}
               </DialogTitle>
               <DialogDescription className="text-xs font-normal text-[var(--text-secondary)] mt-0.5">

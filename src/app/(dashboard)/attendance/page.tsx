@@ -462,7 +462,7 @@ export default function AttendancePage() {
               <strong>Dry Run Mode active:</strong> WhatsApp messages are simulated and logged. No real messages are delivered to Meta.
             </span>
           </div>
-          <span className="bg-[var(--warn)]/20 text-[var(--warn-text)] font-bold text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+          <span className="bg-[var(--warn)]/20 text-[var(--warn-text)] font-bold text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
             Dry Run
           </span>
         </div>
@@ -503,7 +503,7 @@ export default function AttendancePage() {
               <select
                 value={selectedClass}
                 onChange={(e) => handleClassChange(e.target.value)}
-                className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-base font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
+                className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
               >
                 {availableClasses.map((c) => (
                   <option key={c} value={c}>
@@ -549,7 +549,7 @@ export default function AttendancePage() {
                   value={selectedDate}
                   max={todayStr}
                   onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-base font-normal text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
+                  className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-normal text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
                 />
               </div>
 
@@ -569,7 +569,7 @@ export default function AttendancePage() {
         {/* Status line: "Present 22 · Absent 3" and "Mark all present" tertiary link */}
         {availableClasses.length > 0 && attendanceList.length > 0 && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[var(--card-border)]/50">
-            <div className="text-base font-bold text-[var(--text)] flex items-center gap-2">
+            <div className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
               <span className="text-[var(--present-text)]">Present {presentCount}</span>
               <span className="text-[var(--text-secondary)] opacity-60">·</span>
               <span className={absentCount > 0 ? 'text-[var(--absent-text)] font-bold' : 'text-[var(--text-secondary)]'}>
@@ -602,7 +602,7 @@ export default function AttendancePage() {
             placeholder="Search student or school in this class..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-base text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
+            className="w-full h-11 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
       )}
@@ -714,7 +714,7 @@ export default function AttendancePage() {
       {attendanceList.length > 0 && (
         <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/70 p-4 shadow-lg">
           <div className="max-w-[960px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="text-base font-bold text-[var(--text)]">
+            <div className="text-sm font-bold text-[var(--text)]">
               <div className="flex items-center gap-2">
                 <span className="text-[var(--present-text)]">Present: {presentCount}</span>
                 <span className="text-[var(--text-secondary)] opacity-60">·</span>
@@ -733,7 +733,7 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleSaveAttendanceOnly}
                 disabled={saving || sendingAlerts || loading}
-                className="min-h-[44px] px-5 rounded-[12px] font-bold text-base border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-2 flex-1 sm:flex-initial"
               >
                 <Save className="size-4" />
                 <span>{saving ? 'Saving...' : 'Save attendance'}</span>
@@ -744,7 +744,7 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleInitiateSaveAndNotify}
                 disabled={absentCount === 0 || saving || sendingAlerts || loading}
-                className="min-h-[44px] px-6 rounded-[12px] font-bold text-base bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-6 rounded-[12px] font-bold text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial"
               >
                 <Send className="size-4" />
                 <span>{sendingAlerts ? 'Processing...' : 'Save and notify absentees'}</span>

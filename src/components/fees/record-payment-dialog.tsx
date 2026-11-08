@@ -151,19 +151,19 @@ function RecordPaymentForm({
 
         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs">
           <div>
-            <span className="text-slate-400 block text-[11px]">Total Due</span>
+            <span className="text-slate-400 block text-xs">Total Due</span>
             <span className="font-semibold text-slate-800">
               {formatCurrency(fee.amount_due)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[11px]">Paid So Far</span>
+            <span className="text-slate-400 block text-xs">Paid So Far</span>
             <span className="font-semibold text-emerald-700">
               {formatCurrency(fee.amount_paid)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[11px]">Balance</span>
+            <span className="text-slate-400 block text-xs">Balance</span>
             <span className="font-bold text-rose-700">
               {formatCurrency(fee.balance)}
             </span>
@@ -182,7 +182,7 @@ function RecordPaymentForm({
               <button
                 type="button"
                 onClick={() => setAmount(fee.balance)}
-                className="text-[11px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
               >
                 Pay full balance ({formatCurrency(fee.balance)})
               </button>
@@ -206,7 +206,7 @@ function RecordPaymentForm({
                   setConfirmOverpayment(false)
                 }
               }}
-              className="pl-8 h-11 text-base font-bold text-slate-900"
+              className="pl-8 h-11 text-sm font-bold text-slate-900"
               disabled={loading}
             />
           </div>
@@ -233,7 +233,7 @@ function RecordPaymentForm({
               </label>
             </div>
           ) : amount < fee.balance && amount > 0 ? (
-            <p className="text-[11px] text-amber-700 font-medium">
+            <p className="text-xs text-amber-700 font-medium">
               Partial payment: Remaining balance will be{' '}
               {formatCurrency(fee.balance - amount)}.
             </p>
@@ -252,10 +252,10 @@ function RecordPaymentForm({
             max={todayStr}
             value={paidOn}
             onChange={(e) => setPaidOn(e.target.value)}
-            className="h-11 text-base"
+            className="h-11 text-sm"
             disabled={loading}
           />
-          <p className="text-[11px] text-slate-400">Future dates are blocked.</p>
+          <p className="text-xs text-slate-400">Future dates are blocked.</p>
         </div>
 
         {/* Payment Mode */}

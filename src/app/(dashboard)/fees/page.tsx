@@ -15,7 +15,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Calendar,
+  Calendar, 
 } from 'lucide-react'
 import { formatCurrency, formatDate, formatPeriod } from '@/lib/formatters'
 import { RecordPaymentDialog } from '@/components/fees/record-payment-dialog'
@@ -465,7 +465,7 @@ export default function FeesPage() {
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-[12px] bg-[var(--primary-soft)]/50 border border-[var(--card-border)]/60">
               <Calendar className="size-4 text-[var(--primary)] shrink-0" />
-              <span className="font-bold text-base text-[var(--text)]">
+              <span className="font-bold text-sm text-[var(--text)]">
                 {selectedMonth ? formatPeriod(`${selectedMonth}-01`) : 'Select Month'}
               </span>
             </div>
@@ -502,7 +502,7 @@ export default function FeesPage() {
             <span className="text-xs font-bold text-[var(--present-text)] uppercase tracking-wider block">
               Collected
             </span>
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--present-text)] block">
+            <span className="text-2xl font-bold tracking-tight text-[var(--present-text)] block">
               {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_paid, 0) : monthStats.totalPaid)}
             </span>
             <span className="text-xs text-[var(--text-secondary)] font-normal block">
@@ -515,7 +515,7 @@ export default function FeesPage() {
             <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
               Outstanding
             </span>
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--text)] block">
+            <span className="text-2xl font-bold tracking-tight text-[var(--text)] block">
               {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.balance, 0) : monthStats.totalBalance)}
             </span>
             <span className="text-xs text-[var(--text-secondary)] font-normal block">
@@ -528,7 +528,7 @@ export default function FeesPage() {
             <span className="text-xs font-bold text-[var(--absent-text)] uppercase tracking-wider block">
               Overdue Students
             </span>
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--absent-text)] block">
+            <span className="text-2xl font-bold tracking-tight text-[var(--absent-text)] block">
               {viewAllMonths ? fees.filter((f) => f.status === 'overdue').length : monthStats.overdueCount} Overdue
             </span>
             <span className="text-xs text-[var(--text-secondary)] font-normal block">
@@ -718,7 +718,7 @@ export default function FeesPage() {
                     <span className="font-medium text-[var(--text)] mt-0.5 block">
                       {formatDate(fee.due_date)}
                     </span>
-                    <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1 mt-0.5">
+                    <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1 mt-0.5">
                       <BellRing className="size-3 text-[var(--text-secondary)]" />
                       <span>Reminders: {fee.reminders_sent || 0}/2</span>
                     </div>

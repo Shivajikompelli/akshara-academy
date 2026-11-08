@@ -48,7 +48,7 @@ export function DesktopNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-base font-bold transition-all ${
+            className={`min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-sm font-bold transition-all ${
               isActive
                 ? 'bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--card-border)]/60'
                 : 'text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text)]'
@@ -103,7 +103,7 @@ export function MobileBottomNav() {
                 }`}
               />
             </div>
-            <span className="truncate text-[11px] leading-tight">{item.name}</span>
+            <span className="truncate text-xs leading-tight">{item.name}</span>
           </Link>
         )
       })}

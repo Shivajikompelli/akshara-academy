@@ -320,7 +320,7 @@ export default function MessageLogPage() {
             placeholder="Search by student name or parent phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-base text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
+            className="w-full h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
 
@@ -551,7 +551,7 @@ export default function MessageLogPage() {
             <div className="space-y-4 py-2">
               {/* WhatsApp Chat Preview Bubble */}
               <div className="p-4 rounded-[20px] bg-[#EFEAE2] border border-[#DDD6CE] space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block text-center">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
                   WhatsApp Cloud API Template Message
                 </span>
 
@@ -561,7 +561,7 @@ export default function MessageLogPage() {
                     {renderWhatsAppTemplateText(selectedLog)}
                   </p>
 
-                  <div className="flex items-center justify-end gap-1.5 text-[11px] text-[var(--whatsapp-text)] font-medium pt-1">
+                  <div className="flex items-center justify-end gap-1.5 text-xs text-[var(--whatsapp-text)] font-medium pt-1">
                     <span>
                       {new Date(selectedLog.created_at).toLocaleTimeString('en-IN', {
                         hour: '2-digit',
