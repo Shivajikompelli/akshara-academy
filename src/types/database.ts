@@ -47,6 +47,32 @@ export interface StudentAttendanceItem {
   attendanceId?: string
 }
 
+export interface FeeSummaryRow {
+  fee_id: string
+  student_id: string
+  full_name: string
+  period: string
+  amount_due: number
+  due_date: string
+  amount_paid: number
+  balance: number
+  status: 'paid' | 'partial' | 'pending' | 'overdue'
+  class_level?: string
+  parent_name?: string
+  phone?: string
+}
+
+export interface FeePayment {
+  id: string
+  fee_id: string
+  amount: number
+  paid_on: string
+  mode: 'cash' | 'upi' | 'bank' | 'online'
+  reference: string | null
+  recorded_by?: string | null
+  created_at?: string
+}
+
 export const CLASS_OPTIONS = [
   'Class 1',
   'Class 2',
