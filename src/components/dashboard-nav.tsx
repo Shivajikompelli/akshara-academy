@@ -2,9 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, CalendarCheck, Receipt, MessageSquareText } from 'lucide-react'
+import { Home, Users, CalendarCheck, Receipt, MessageSquareText } from 'lucide-react'
 
 export const NAV_ITEMS = [
+  {
+    name: 'Home',
+    href: '/',
+    icon: Home,
+  },
   {
     name: 'Students',
     href: '/students',
@@ -21,7 +26,7 @@ export const NAV_ITEMS = [
     icon: Receipt,
   },
   {
-    name: 'Message log',
+    name: 'Messages',
     href: '/messages',
     icon: MessageSquareText,
   },
@@ -31,22 +36,29 @@ export function DesktopNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex-1 space-y-1 px-3 py-4">
+    <nav className="flex-1 space-y-1.5 px-3 py-6">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon
-        const isActive = pathname.startsWith(item.href)
+        const isActive =
+          item.href === '/'
+            ? pathname === '/'
+            : pathname.startsWith(item.href)
 
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-base font-bold transition-all ${
               isActive
-                ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--card-border)]/60'
+                : 'text-[var(--text-secondary)] hover:bg-white hover:text-[var(--text)]'
             }`}
           >
-            <Icon className={`size-5 shrink-0 ${isActive ? 'text-blue-700' : 'text-slate-500'}`} />
+            <Icon
+              className={`size-5 shrink-0 transition-colors ${
+                isActive ? 'text-[var(--primary)]' : 'text-[var(--text-decor)]'
+              }`}
+            />
             <span>{item.name}</span>
           </Link>
         )
@@ -59,27 +71,42 @@ export function MobileBottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white border-t border-slate-200 flex items-stretch md:hidden shadow-lg">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/50 flex items-stretch lg:hidden shadow-lg px-1"
+      aria-label="Mobile Navigation"
+    >
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon
-        const isActive = pathname.startsWith(item.href)
+        const isActive =
+          item.href === '/'
+            ? pathname === '/'
+            : pathname.startsWith(item.href)
 
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex-1 min-h-[48px] flex flex-col items-center justify-center gap-1 py-1 px-2 text-xs transition-colors ${
+            className={`flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 py-1 px-1 text-xs transition-colors select-none ${
               isActive
-                ? 'text-blue-700 font-semibold'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'text-[var(--primary)] font-bold'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text)] font-normal'
             }`}
           >
-            <Icon className={`size-5 shrink-0 ${isActive ? 'text-blue-700' : 'text-slate-500'}`} />
-            <span className="truncate">{item.name}</span>
+            <div
+              className={`p-1 rounded-full transition-colors ${
+                isActive ? 'bg-[var(--primary-soft)]' : ''
+              }`}
+            >
+              <Icon
+                className={`size-5 shrink-0 ${
+                  isActive ? 'text-[var(--primary)] stroke-[2.5]' : 'text-[var(--text-decor)]'
+                }`}
+              />
+            </div>
+            <span className="truncate text-[11px] leading-tight">{item.name}</span>
           </Link>
         )
       })}
     </nav>
   )
 }
-

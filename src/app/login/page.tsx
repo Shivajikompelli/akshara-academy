@@ -3,15 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AksharaLogo } from '@/components/ui/akshara-logo'
+import { AksharaButton } from '@/components/ui/akshara-button'
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -48,36 +48,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Akshara Academy</h1>
-          <p className="text-sm text-slate-600 mt-1">Management Portal</p>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[var(--app-bg)] text-[var(--text)]">
+      <div className="w-full max-w-[420px] space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="flex justify-center mb-3">
+            <AksharaLogo size="xl" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
+            Akshara Academy
+          </h1>
+          <p className="text-sm font-normal text-[var(--text-secondary)]">
+            Sign in to manage students, attendance and fees
+          </p>
         </div>
 
-        <Card className="shadow-sm border-slate-200 bg-white">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-semibold">Sign In</CardTitle>
-            <CardDescription className="text-slate-600">
-              Enter your admin credentials to continue
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {errorMsg && (
-              <div
-                role="alert"
-                className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700"
-              >
-                {errorMsg}
-              </div>
-            )}
+        {/* Card */}
+        <div className="rounded-[24px] bg-white border border-[var(--card-border)]/70 p-6 sm:p-8 shadow-xs">
+          {errorMsg && (
+            <div
+              role="alert"
+              className="mb-5 p-3.5 rounded-[12px] bg-[var(--absent-bg)] border border-[var(--absent)]/20 text-sm font-medium text-[var(--absent-text)] flex items-start gap-2.5"
+            >
+              <AlertCircle className="size-4 shrink-0 mt-0.5 text-[var(--absent)]" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-slate-700">
-                  Email
-                </Label>
-                <Input
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Input (Icon-led) */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="email"
+                className="text-xs font-bold text-[var(--text-secondary)] block uppercase tracking-wider"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-decor)]">
+                  <Mail className="size-4" />
+                </span>
+                <input
                   id="email"
                   type="email"
                   name="email"
@@ -86,41 +97,67 @@ export default function LoginPage() {
                   placeholder="admin@akshara.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 text-base px-3"
                   disabled={isLoading}
+                  className="w-full h-12 pl-10 pr-3.5 rounded-[12px] border border-[var(--card-border)] bg-white text-base text-[var(--text)] placeholder:text-[var(--text-decor)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all"
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-slate-700">
-                  Password
-                </Label>
-                <Input
+            {/* Password Input (Icon-led with Show/Hide toggle) */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="password"
+                className="text-xs font-bold text-[var(--text-secondary)] block uppercase tracking-wider"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-decor)]">
+                  <Lock className="size-4" />
+                </span>
+                <input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   autoComplete="current-password"
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 text-base px-3"
                   disabled={isLoading}
+                  className="w-full h-12 pl-10 pr-11 rounded-[12px] border border-[var(--card-border)] bg-white text-base text-[var(--text)] placeholder:text-[var(--text-decor)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[var(--text-decor)] hover:text-[var(--text)] transition-colors cursor-pointer"
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4.5" />
+                  ) : (
+                    <Eye className="size-4.5" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              <Button
+            {/* Submit Button */}
+            <div className="pt-2">
+              <AksharaButton
                 type="submit"
-                disabled={isLoading}
-                className="w-full h-12 text-base font-medium mt-2 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                variant="primary"
+                size="lg"
+                loading={isLoading}
+                className="w-full"
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                Sign In
+              </AksharaButton>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )
 }
-
