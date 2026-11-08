@@ -60,6 +60,8 @@ export interface FeeSummaryRow {
   class_level?: string
   parent_name?: string
   phone?: string
+  reminders_sent?: number
+  last_reminder_date?: string | null
 }
 
 export interface FeePayment {

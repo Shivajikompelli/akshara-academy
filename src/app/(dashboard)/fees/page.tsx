@@ -24,11 +24,13 @@ import {
   PlusCircle,
   Receipt,
   Calendar,
-  Building,
+  BellRing,
+  Info,
 } from 'lucide-react'
 import { formatCurrency, formatDate, formatPeriod } from '@/lib/formatters'
 import { RecordPaymentDialog } from '@/components/fees/record-payment-dialog'
 import { PaymentHistoryDialog } from '@/components/fees/payment-history-dialog'
+import { SendFeeRemindersDialog } from '@/components/fees/send-fee-reminders-dialog'
 import { CLASS_OPTIONS, type FeeSummaryRow } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -53,6 +55,10 @@ export default function FeesPage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
   const [selectedFee, setSelectedFee] = useState<FeeSummaryRow | null>(null)
 
+  // Reminder Dialog states
+  const [remindersDialogOpen, setRemindersDialogOpen] = useState(false)
+  const [selectedSingleStudent, setSelectedSingleStudent] = useState<{ id: string; name: string } | null>(null)
+
   useEffect(() => {
     const now = new Date()
     setTodayStr(now.toISOString().split('T')[0])
@@ -69,7 +75,7 @@ export default function FeesPage() {
     return Math.max(0, Math.floor((nowTime - dueTime) / (1000 * 60 * 60 * 24)))
   }, [todayStr])
 
-  // Fetch fees from fee_summary view and enrich with student class & phone
+  // Fetch fees from fee_summary view and enrich with student class, phone, and reminder counts
   const fetchFeesData = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
@@ -98,8 +104,29 @@ export default function FeesPage() {
         })
       })
 
+      // 3. Fetch message_log for fee reminders to enrich reminder count & last sent date
+      const { data: reminderLogs } = await supabase
+        .from('message_log')
+        .select('fee_id, status, related_date, created_at')
+        .eq('kind', 'fee_reminder')
+        .neq('status', 'failed')
+        .not('fee_id', 'is', null)
+
+      const remindersMap = new Map<string, { count: number; lastDate: string | null }>()
+      ;(reminderLogs || []).forEach((r) => {
+        if (!r.fee_id) return
+        const prev = remindersMap.get(r.fee_id) || { count: 0, lastDate: null }
+        prev.count += 1
+        const dateVal = r.related_date || (r.created_at ? r.created_at.split('T')[0] : null)
+        if (!prev.lastDate || (dateVal && dateVal > prev.lastDate)) {
+          prev.lastDate = dateVal
+        }
+        remindersMap.set(r.fee_id, prev)
+      })
+
       const enriched: FeeSummaryRow[] = (summaryData || []).map((row: any) => {
         const studentInfo = studentsMap.get(row.student_id)
+        const reminderInfo = remindersMap.get(row.fee_id)
         return {
           fee_id: row.fee_id,
           student_id: row.student_id,
@@ -113,6 +140,8 @@ export default function FeesPage() {
           class_level: studentInfo?.class_level,
           parent_name: studentInfo?.parent_name,
           phone: studentInfo?.phone,
+          reminders_sent: reminderInfo?.count || 0,
+          last_reminder_date: reminderInfo?.lastDate || null,
         }
       })
 
@@ -138,13 +167,11 @@ export default function FeesPage() {
     const targetMonthDate = `${selectedMonth}-01`
 
     try {
-      // Call database function generate_monthly_fees(p_month)
       const { data, error } = await supabase.rpc('generate_monthly_fees', {
         p_month: targetMonthDate,
       })
 
       if (error) {
-        // Fallback: manually insert monthly fees for active students where monthly_fee > 0
         const [y, m] = selectedMonth.split('-').map(Number)
         const { data: activeStudents, error: fetchErr } = await supabase
           .from('students')
@@ -202,7 +229,7 @@ export default function FeesPage() {
     return fees.filter((f) => f.period.startsWith(selectedMonth))
   }, [fees, selectedMonth])
 
-  // 2. Summary cards strictly for the selected month
+  // Summary cards for the selected month
   const monthStats = useMemo(() => {
     let totalDue = 0
     let totalPaid = 0
@@ -226,23 +253,20 @@ export default function FeesPage() {
     }
   }, [monthFees])
 
-  // 3. Filtered & Sorted Fees List
+  // Filtered & Sorted Fees List
   const filteredFees = useMemo(() => {
     const baseList = viewAllMonths ? fees : monthFees
 
     return baseList
       .filter((fee) => {
-        // Status Filter
         if (statusFilter !== 'all' && fee.status !== statusFilter) {
           return false
         }
 
-        // Class Filter
         if (classFilter !== 'all' && fee.class_level !== classFilter) {
           return false
         }
 
-        // Search Query (Student name, parent phone)
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim()
           const nameMatch = fee.full_name.toLowerCase().includes(q)
@@ -260,7 +284,6 @@ export default function FeesPage() {
           return b.balance - a.balance
         }
 
-        // Default Sort: Overdue first, longest overdue at the top
         const overdueA = a.status === 'overdue' ? getDaysOverdue(a.due_date) : -1
         const overdueB = b.status === 'overdue' ? getDaysOverdue(b.due_date) : -1
 
@@ -268,21 +291,23 @@ export default function FeesPage() {
           return overdueB - overdueA
         }
 
-        // Secondary: balance descending
         return b.balance - a.balance
       })
   }, [fees, monthFees, viewAllMonths, statusFilter, classFilter, searchQuery, sortBy, getDaysOverdue])
 
-  // Open Record Payment
   function handleOpenRecordPayment(fee: FeeSummaryRow) {
     setSelectedFee(fee)
     setPaymentDialogOpen(true)
   }
 
-  // Open History
   function handleOpenHistory(fee: FeeSummaryRow) {
     setSelectedFee(fee)
     setHistoryDialogOpen(true)
+  }
+
+  function handleOpenSingleReminder(fee: FeeSummaryRow) {
+    setSelectedSingleStudent({ id: fee.student_id, name: fee.full_name })
+    setRemindersDialogOpen(true)
   }
 
   function getStatusBadge(status: string, dueDate: string) {
@@ -333,7 +358,7 @@ export default function FeesPage() {
               </Badge>
             </div>
             <p className="text-sm text-slate-500 mt-0.5">
-              Track fee collections, record receipts, and manage outstanding balances.
+              Track fee collections, record receipts, and manage scheduled WhatsApp fee reminders.
             </p>
           </div>
 
@@ -347,6 +372,20 @@ export default function FeesPage() {
             >
               <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
+            </Button>
+
+            {/* Send Reminders Now Button */}
+            <Button
+              type="button"
+              onClick={() => {
+                setSelectedSingleStudent(null)
+                setRemindersDialogOpen(true)
+              }}
+              disabled={loading}
+              className="min-h-[44px] gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs cursor-pointer"
+            >
+              <BellRing className="size-4" />
+              <span>Send reminders now</span>
             </Button>
 
             <Button
@@ -602,7 +641,7 @@ export default function FeesPage() {
                   <TableHead className="font-bold text-slate-700 text-xs text-right">Amount Due</TableHead>
                   <TableHead className="font-bold text-slate-700 text-xs text-right">Paid</TableHead>
                   <TableHead className="font-bold text-slate-700 text-xs text-right">Balance</TableHead>
-                  <TableHead className="font-bold text-slate-700 text-xs">Due Date</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs">Due Date & Reminders</TableHead>
                   <TableHead className="font-bold text-slate-700 text-xs">Status</TableHead>
                   <TableHead className="font-bold text-slate-700 text-xs text-right">Actions</TableHead>
                 </TableRow>
@@ -637,32 +676,56 @@ export default function FeesPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-xs text-slate-600">
-                        {formatDate(fee.due_date)}
+                        <span className="font-medium">{formatDate(fee.due_date)}</span>
+                        {/* Reminders sent: N of 2, last on DATE */}
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <BellRing className="size-3 text-slate-400" />
+                          <span>
+                            Reminders sent: {fee.reminders_sent || 0} of 2
+                            {fee.last_reminder_date ? `, last on ${formatDate(fee.last_reminder_date)}` : ''}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(fee.status, fee.due_date)}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        {isUnpaidOrPartial ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleOpenRecordPayment(fee)}
-                            className="min-h-[38px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <CreditCard className="size-3.5" />
-                            <span>Record payment</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenHistory(fee)}
-                            className="min-h-[38px] px-3 text-slate-600 text-xs gap-1.5 cursor-pointer"
-                          >
-                            <History className="size-3.5" />
-                            <span>History</span>
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isUnpaidOrPartial && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenSingleReminder(fee)}
+                              className="min-h-[38px] px-2.5 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 font-semibold text-xs gap-1 cursor-pointer"
+                              title="Send WhatsApp fee reminder to parent"
+                            >
+                              <BellRing className="size-3.5 text-blue-600" />
+                              <span>Remind</span>
+                            </Button>
+                          )}
+
+                          {isUnpaidOrPartial ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleOpenRecordPayment(fee)}
+                              className="min-h-[38px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <CreditCard className="size-3.5" />
+                              <span>Record payment</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenHistory(fee)}
+                              className="min-h-[38px] px-3 text-slate-600 text-xs gap-1.5 cursor-pointer"
+                            >
+                              <History className="size-3.5" />
+                              <span>History</span>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -712,10 +775,29 @@ export default function FeesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-xs text-slate-500">
-                      Due: <strong>{formatDate(fee.due_date)}</strong>
+                  {/* Reminders sent: N of 2 */}
+                  <div className="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span>Due: <strong>{formatDate(fee.due_date)}</strong></span>
+                    <span className="flex items-center gap-1 font-medium">
+                      <BellRing className="size-3 text-slate-400" />
+                      Reminders: {fee.reminders_sent || 0}/2
+                      {fee.last_reminder_date ? ` (${formatDate(fee.last_reminder_date)})` : ''}
                     </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                    {isUnpaidOrPartial && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenSingleReminder(fee)}
+                        className="min-h-[40px] px-3 text-blue-700 border-blue-200 bg-blue-50 font-semibold text-xs gap-1.5 cursor-pointer"
+                      >
+                        <BellRing className="size-3.5 text-blue-600" />
+                        <span>Remind</span>
+                      </Button>
+                    )}
 
                     {isUnpaidOrPartial ? (
                       <Button
@@ -761,6 +843,15 @@ export default function FeesPage() {
         onOpenChange={setHistoryDialogOpen}
         fee={selectedFee}
         onFeeUpdated={fetchFeesData}
+      />
+
+      {/* Scheduled Fee Reminders / Single Reminder Dialog */}
+      <SendFeeRemindersDialog
+        open={remindersDialogOpen}
+        onOpenChange={setRemindersDialogOpen}
+        onCompleted={fetchFeesData}
+        singleStudentId={selectedSingleStudent?.id}
+        singleStudentName={selectedSingleStudent?.name}
       />
     </div>
   )

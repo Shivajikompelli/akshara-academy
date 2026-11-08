@@ -20,13 +20,15 @@ import {
   Clock,
   Send,
   Eye,
+  Filter,
 } from 'lucide-react'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatPeriod } from '@/lib/formatters'
 import { toast } from 'sonner'
 
 interface MessageLogRow {
   id: string
   student_id: string | null
+  fee_id: string | null
   kind: 'absent_alert' | 'fee_reminder'
   template_name: string
   status: 'queued' | 'sent' | 'delivered' | 'read' | 'failed'
@@ -40,12 +42,18 @@ interface MessageLogRow {
     class_level: string
     phone: string
   } | null
+  fees: {
+    id: string
+    period: string
+    amount_due: number
+  } | null
 }
 
 export default function MessageLogPage() {
   const [logs, setLogs] = useState<MessageLogRow[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'failed' | 'queued'>('all')
+  const [kindFilter, setKindFilter] = useState<'all' | 'absent_alert' | 'fee_reminder'>('all')
 
   const fetchLogs = useCallback(async () => {
     setLoading(true)
@@ -57,6 +65,7 @@ export default function MessageLogPage() {
         .select(`
           id,
           student_id,
+          fee_id,
           kind,
           template_name,
           status,
@@ -69,6 +78,11 @@ export default function MessageLogPage() {
             full_name,
             class_level,
             phone
+          ),
+          fees (
+            id,
+            period,
+            amount_due
           )
         `)
         .order('created_at', { ascending: false })
@@ -76,10 +90,10 @@ export default function MessageLogPage() {
 
       if (error) throw error
 
-      // Ensure proper typing for joined relation
       const mapped = (data || []).map((row: any) => ({
         ...row,
         students: Array.isArray(row.students) ? row.students[0] : row.students,
+        fees: Array.isArray(row.fees) ? row.fees[0] : row.fees,
       }))
 
       setLogs(mapped)
@@ -97,9 +111,16 @@ export default function MessageLogPage() {
   }, [fetchLogs])
 
   const filteredLogs = useMemo(() => {
-    if (statusFilter === 'all') return logs
-    return logs.filter((l) => l.status === statusFilter)
-  }, [logs, statusFilter])
+    return logs.filter((l) => {
+      if (statusFilter !== 'all' && l.status !== statusFilter) {
+        return false
+      }
+      if (kindFilter !== 'all' && l.kind !== kindFilter) {
+        return false
+      }
+      return true
+    })
+  }, [logs, statusFilter, kindFilter])
 
   function getStatusBadge(status: string, waId: string | null) {
     switch (status) {
@@ -153,7 +174,7 @@ export default function MessageLogPage() {
             </Badge>
           </div>
           <p className="text-sm text-slate-500 mt-0.5">
-            Audit history of WhatsApp absent alerts and notifications sent to parents.
+            Audit history of WhatsApp absent alerts and scheduled fee reminders sent to parents.
           </p>
         </div>
 
@@ -162,7 +183,7 @@ export default function MessageLogPage() {
           variant="outline"
           onClick={fetchLogs}
           disabled={loading}
-          className="min-h-[44px] gap-2 border-slate-300 text-slate-700 bg-white hover:bg-slate-50"
+          className="min-h-[44px] gap-2 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
         >
           <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
@@ -170,23 +191,61 @@ export default function MessageLogPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+        {/* Kind Filter (All, Absent Alert, Fee Reminder) */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-600">
+          <button
+            type="button"
+            onClick={() => setKindFilter('all')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+              kindFilter === 'all'
+                ? 'bg-white text-slate-900 font-bold shadow-xs'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            All Kinds ({logs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setKindFilter('absent_alert')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+              kindFilter === 'absent_alert'
+                ? 'bg-white text-blue-800 font-bold shadow-xs'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            Absent Alerts ({logs.filter((l) => l.kind === 'absent_alert').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setKindFilter('fee_reminder')}
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+              kindFilter === 'fee_reminder'
+                ? 'bg-white text-emerald-800 font-bold shadow-xs'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            Fee Reminders ({logs.filter((l) => l.kind === 'fee_reminder').length})
+          </button>
+        </div>
+
+        {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-600">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'all'
                 ? 'bg-white text-slate-900 font-bold shadow-xs'
                 : 'hover:text-slate-900'
             }`}
           >
-            All ({logs.length})
+            All Status
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter('sent')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'sent'
                 ? 'bg-white text-emerald-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
@@ -197,7 +256,7 @@ export default function MessageLogPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('failed')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'failed'
                 ? 'bg-white text-rose-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
@@ -208,7 +267,7 @@ export default function MessageLogPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('queued')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               statusFilter === 'queued'
                 ? 'bg-white text-amber-800 font-bold shadow-xs'
                 : 'hover:text-slate-900'
@@ -230,9 +289,7 @@ export default function MessageLogPage() {
           <MessageSquare className="size-10 mx-auto text-slate-400 mb-3" />
           <h3 className="text-base font-semibold text-slate-900">No message logs found</h3>
           <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-            {statusFilter !== 'all'
-              ? 'No messages match the chosen status filter.'
-              : 'Messages will appear here once WhatsApp alerts are triggered from the attendance screen.'}
+            Messages will appear here once WhatsApp alerts or fee reminders are triggered.
           </p>
         </div>
       ) : (
@@ -243,9 +300,9 @@ export default function MessageLogPage() {
                 <TableHead className="font-semibold text-slate-700">Date</TableHead>
                 <TableHead className="font-semibold text-slate-700">Student</TableHead>
                 <TableHead className="font-semibold text-slate-700">Class</TableHead>
-                <TableHead className="font-semibold text-slate-700">Kind</TableHead>
+                <TableHead className="font-semibold text-slate-700">Kind & Details</TableHead>
                 <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                <TableHead className="font-semibold text-slate-700">Details / Error</TableHead>
+                <TableHead className="font-semibold text-slate-700">Message ID / Error</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -282,11 +339,27 @@ export default function MessageLogPage() {
                       </Badge>
                     </TableCell>
 
-                    {/* Kind */}
-                    <TableCell className="py-3.5 whitespace-nowrap text-xs text-slate-700">
-                      <span className="capitalize font-medium">
-                        {log.kind === 'absent_alert' ? 'Absent Alert' : 'Fee Reminder'}
-                      </span>
+                    {/* Kind & Fee Month Details */}
+                    <TableCell className="py-3.5 whitespace-nowrap text-xs">
+                      {log.kind === 'absent_alert' ? (
+                        <div>
+                          <Badge className="bg-rose-50 text-rose-800 border border-rose-200 text-[11px] font-semibold">
+                            Absent Alert
+                          </Badge>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                            Date: {formatDate(log.related_date)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div>
+                          <Badge className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
+                            Fee Reminder
+                          </Badge>
+                          <span className="text-[11px] text-slate-700 font-bold block mt-0.5">
+                            Month: {formatPeriod(log.fees?.period || log.related_date)}
+                          </span>
+                        </div>
+                      )}
                     </TableCell>
 
                     {/* Status */}
@@ -318,4 +391,3 @@ export default function MessageLogPage() {
     </div>
   )
 }
-
