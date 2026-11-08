@@ -152,19 +152,19 @@ export function SendFeeRemindersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white p-6 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg bg-white p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-lg">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-full bg-blue-100 text-blue-700">
+          <div className="flex items-center gap-2.5">
+            <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
               <BellRing className="size-5" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold text-slate-900">
+              <DialogTitle className="text-lg font-bold text-[var(--text)]">
                 {singleStudentName
                   ? `Send Fee Reminder: ${singleStudentName}`
                   : 'Send Scheduled Fee Reminders'}
               </DialogTitle>
-              <DialogDescription className="text-slate-600 text-xs">
+              <DialogDescription className="text-[var(--text-secondary)] text-xs">
                 {singleStudentName
                   ? 'Manual WhatsApp fee reminder for this student.'
                   : 'Sends due fee reminders based on schedule (Day 0 on due date, Day 2 after due date).'}

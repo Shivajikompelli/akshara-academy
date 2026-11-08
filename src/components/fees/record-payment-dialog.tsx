@@ -306,20 +306,20 @@ function RecordPaymentForm({
           />
         </div>
 
-        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+        <DialogFooter className="pt-2 gap-3 flex flex-row justify-end">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="min-h-[44px] cursor-pointer"
+            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={loading || (isOverpayment && !confirmOverpayment)}
-            className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+            className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm cursor-pointer shadow-xs disabled:opacity-40"
           >
             {loading ? 'Recording...' : 'Record Payment'}
           </Button>
@@ -339,7 +339,7 @@ export function RecordPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-6">
+      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
         <RecordPaymentForm
           key={fee.fee_id}
           fee={fee}

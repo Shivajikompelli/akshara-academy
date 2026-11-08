@@ -212,17 +212,17 @@ export function PaymentHistoryDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl bg-white p-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl bg-white p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-lg">
           <DialogHeader>
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-full bg-slate-100 text-slate-700">
+            <div className="flex items-center gap-2.5">
+              <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
                 <History className="size-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-slate-900">
+                <DialogTitle className="text-lg font-bold text-[var(--text)]">
                   Fee Details & History
                 </DialogTitle>
-                <DialogDescription className="text-slate-600 text-xs">
+                <DialogDescription className="text-[var(--text-secondary)] text-xs">
                   {fee.full_name} • {formatPeriod(fee.period)}
                 </DialogDescription>
               </div>
@@ -467,15 +467,15 @@ export function PaymentHistoryDialog({
           open={!!paymentToDelete}
           onOpenChange={(isOpen) => !isOpen && setPaymentToDelete(null)}
         >
-          <DialogContent className="max-w-sm bg-white p-6">
+          <DialogContent className="max-w-sm bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
             <DialogHeader>
-              <div className="flex items-center gap-2 text-rose-600">
+              <div className="flex items-center gap-2 text-[var(--absent-text)]">
                 <AlertTriangle className="size-5" />
-                <DialogTitle className="text-base font-bold text-slate-900">
+                <DialogTitle className="text-base font-bold text-[var(--text)]">
                   Delete Payment?
                 </DialogTitle>
               </div>
-              <DialogDescription className="text-slate-600 text-xs pt-1">
+              <DialogDescription className="text-[var(--text-secondary)] text-xs pt-1">
                 Are you sure you want to delete this payment of{' '}
                 <strong>{formatCurrency(paymentToDelete.amount)}</strong> recorded on{' '}
                 {formatDate(paymentToDelete.paid_on)}? This will restore the student&apos;s
@@ -489,7 +489,7 @@ export function PaymentHistoryDialog({
                 variant="outline"
                 onClick={() => setPaymentToDelete(null)}
                 disabled={deletingPayment}
-                className="cursor-pointer"
+                className="min-h-[44px] px-4 rounded-[12px] font-bold text-xs cursor-pointer border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)]"
               >
                 Cancel
               </Button>
@@ -497,7 +497,7 @@ export function PaymentHistoryDialog({
                 type="button"
                 onClick={handleDeletePayment}
                 disabled={deletingPayment}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+                className="min-h-[44px] px-4 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-xs cursor-pointer shadow-xs"
               >
                 {deletingPayment ? 'Deleting...' : 'Yes, Delete Payment'}
               </Button>
