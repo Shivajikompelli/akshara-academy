@@ -32,42 +32,42 @@ export function SendConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white p-6">
+      <DialogContent className="max-w-lg bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-full bg-emerald-100 text-emerald-700">
+          <div className="flex items-center gap-2.5">
+            <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
               <MessageSquare className="size-5" />
             </div>
-            <DialogTitle className="text-lg font-bold text-slate-900">
+            <DialogTitle className="text-lg font-bold text-[var(--text)]">
               Send WhatsApp Absent Alerts?
             </DialogTitle>
           </div>
-          <DialogDescription className="text-slate-600 pt-1 text-sm">
+          <DialogDescription className="text-[var(--text-secondary)] pt-1 text-sm font-normal">
             Attendance will be saved first, then WhatsApp absent alert messages will be queued.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Eligible Students List */}
-          <div className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/60 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-emerald-900">
+          <div className="p-4 rounded-[16px] bg-[var(--whatsapp-bg)] border border-[var(--whatsapp)]/30 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-[var(--whatsapp-text)]">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="size-4 text-[var(--whatsapp)]" />
                 <span>Send WhatsApp alert to {eligible.length} parent{eligible.length === 1 ? '' : 's'}:</span>
               </span>
               <span className="font-mono">{eligible.length}</span>
             </div>
 
             {eligible.length > 0 ? (
-              <ul className="text-xs text-slate-800 space-y-1 pl-5 list-disc max-h-36 overflow-y-auto">
+              <ul className="text-xs text-[var(--text)] space-y-1.5 pl-5 list-disc max-h-36 overflow-y-auto">
                 {eligible.map((item) => (
                   <li key={item.student.id}>
-                    <span className="font-semibold">{item.student.full_name}</span> &rarr; {item.student.parent_name} ({item.student.phone})
+                    <span className="font-bold">{item.student.full_name}</span> &rarr; {item.student.parent_name} ({item.student.phone})
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-slate-500 italic">
+              <p className="text-xs text-[var(--text-secondary)] italic">
                 None of the absent students have WhatsApp alert consent.
               </p>
             )}
@@ -75,17 +75,17 @@ export function SendConfirmDialog({
 
           {/* Skipped Students List (No consent) */}
           {skipped.length > 0 && (
-            <div className="p-3.5 rounded-lg border border-amber-200 bg-amber-50/60 space-y-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-amber-900">
+            <div className="p-4 rounded-[16px] bg-[var(--warn-bg)] border border-[var(--warn)]/30 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--warn-text)]">
                 <span className="flex items-center gap-1.5">
-                  <AlertCircle className="size-4 text-amber-600" />
+                  <AlertCircle className="size-4 text-[var(--warn)]" />
                   <span>
                     {skipped.length} student{skipped.length === 1 ? '' : 's'} skipped (no WhatsApp consent):
                   </span>
                 </span>
                 <span className="font-mono">{skipped.length}</span>
               </div>
-              <ul className="text-xs text-slate-700 space-y-0.5 pl-5 list-disc max-h-24 overflow-y-auto">
+              <ul className="text-xs text-[var(--text-secondary)] space-y-1 pl-5 list-disc max-h-24 overflow-y-auto">
                 {skipped.map((item) => (
                   <li key={item.student.id}>
                     <span>{item.student.full_name}</span>
@@ -96,13 +96,13 @@ export function SendConfirmDialog({
           )}
         </div>
 
-        <DialogFooter className="pt-2 gap-2">
+        <DialogFooter className="pt-2 gap-3 flex flex-row justify-end">
           <Button
             type="button"
             variant="outline"
             disabled={loading}
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px]"
+            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
@@ -110,7 +110,7 @@ export function SendConfirmDialog({
             type="button"
             disabled={loading || eligible.length === 0}
             onClick={onConfirm}
-            className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            className="min-h-[44px] px-6 rounded-[12px] font-bold text-sm bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs cursor-pointer disabled:opacity-40"
           >
             {loading ? 'Sending Alerts...' : `Confirm & Send (${eligible.length})`}
           </Button>

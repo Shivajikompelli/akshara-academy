@@ -46,59 +46,59 @@ export function SendResultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-6">
+      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold text-slate-900">
+            <DialogTitle className="text-lg font-bold text-[var(--text)]">
               WhatsApp Alert Summary
             </DialogTitle>
             {result.dry_run && (
-              <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-semibold text-xs">
+              <Badge className="bg-[var(--warn-bg)] text-[var(--warn-text)] border border-[var(--warn)]/30 font-bold text-xs rounded-full px-2.5 py-0.5">
                 Dry Run Mode
               </Badge>
             )}
           </div>
-          <DialogDescription className="text-slate-600 text-xs">
+          <DialogDescription className="text-[var(--text-secondary)] text-xs font-normal">
             Summary of attendance absent notification processing.
           </DialogDescription>
         </DialogHeader>
 
         {/* Dry Run Banner */}
         {result.dry_run && (
-          <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs flex items-start gap-2">
-            <Info className="size-4 shrink-0 text-amber-600 mt-0.5" />
+          <div className="p-3.5 rounded-[16px] border border-[var(--warn)]/30 bg-[var(--warn-bg)] text-[var(--warn-text)] text-xs flex items-start gap-2">
+            <Info className="size-4 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold">Dry run mode active:</span> Messages were logged in the database, but Meta WhatsApp API was not charged or called.
+              <span className="font-bold">Dry run mode active:</span> Messages were logged in the database, but Meta WhatsApp API was not charged or called.
             </div>
           </div>
         )}
 
         <div className="space-y-2.5 py-1">
           {/* Sent Count */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs font-semibold text-emerald-950">
+          <div className="flex items-center justify-between p-3.5 rounded-[16px] bg-[var(--whatsapp-bg)] border border-[var(--whatsapp)]/30 text-xs font-bold text-[var(--whatsapp-text)]">
             <span className="flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-emerald-600" />
+              <CheckCircle2 className="size-4 text-[var(--whatsapp)]" />
               <span>{result.dry_run ? 'Messages simulated' : 'Messages sent'}:</span>
             </span>
-            <span className="text-sm font-bold text-emerald-700">{result.sent}</span>
+            <span className="text-base font-bold">{result.sent}</span>
           </div>
 
           {/* Already Sent Count */}
           {result.already_sent > 0 && (
-            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700">
+            <div className="flex items-center justify-between p-3.5 rounded-[16px] bg-[var(--primary-soft)] border border-[var(--card-border)] text-xs font-medium text-[var(--text)]">
               <span>Already notified earlier today (skipped):</span>
-              <span className="text-sm font-bold text-slate-800">{result.already_sent}</span>
+              <span className="text-base font-bold text-[var(--primary)]">{result.already_sent}</span>
             </div>
           )}
 
           {/* Skipped for No Consent */}
           {result.skipped_no_consent && result.skipped_no_consent.length > 0 && (
-            <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-200 space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-semibold text-amber-900">
+            <div className="p-3.5 rounded-[16px] bg-[var(--warn-bg)] border border-[var(--warn)]/30 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--warn-text)]">
                 <span>Skipped (no parent consent):</span>
                 <span>{result.skipped_no_consent.length}</span>
               </div>
-              <ul className="text-xs text-slate-600 pl-4 list-disc space-y-0.5">
+              <ul className="text-xs text-[var(--text-secondary)] pl-4 list-disc space-y-0.5">
                 {result.skipped_no_consent.map((name, i) => (
                   <li key={i}>{name}</li>
                 ))}
@@ -108,28 +108,28 @@ export function SendResultDialog({
 
           {/* Failed Count */}
           {result.failed > 0 && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-300 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-rose-900">
+            <div className="p-3.5 rounded-[16px] bg-[var(--absent-bg)] border border-[var(--absent)]/30 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--absent-text)]">
                 <span className="flex items-center gap-1.5">
-                  <XCircle className="size-4 text-rose-600" />
+                  <XCircle className="size-4 text-[var(--absent)]" />
                   <span>Failed to send:</span>
                 </span>
-                <span className="text-sm font-bold text-rose-700">{result.failed}</span>
+                <span className="text-base font-bold text-[var(--absent-text)]">{result.failed}</span>
               </div>
-              <p className="text-[11px] text-rose-700">
+              <p className="text-xs text-[var(--absent-text)]">
                 Some messages encountered errors. You can retry sending the failed alerts now.
               </p>
             </div>
           )}
         </div>
 
-        <DialogFooter className="pt-2 gap-2">
+        <DialogFooter className="pt-2 gap-3 flex flex-row justify-end">
           {result.failed > 0 && (
             <Button
               type="button"
               disabled={retrying}
               onClick={onRetryFailed}
-              className="min-h-[44px] bg-rose-600 hover:bg-rose-700 text-white font-bold gap-1.5"
+              className="min-h-[44px] px-5 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-sm gap-1.5 cursor-pointer"
             >
               <RotateCcw className="size-4" />
               <span>{retrying ? 'Retrying...' : 'Retry Failed Alerts'}</span>
@@ -138,9 +138,8 @@ export function SendResultDialog({
 
           <Button
             type="button"
-            variant="outline"
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px] flex-1"
+            className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex-1 cursor-pointer"
           >
             Close
           </Button>
