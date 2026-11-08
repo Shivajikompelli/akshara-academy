@@ -33,12 +33,14 @@ export function StatusConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white">
+      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
         <DialogHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div
-              className={`p-2 rounded-full ${
-                isDeactivating ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
+              className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
+                isDeactivating
+                  ? 'bg-[var(--absent-bg)] text-[var(--absent-text)] border border-[var(--absent)]/30'
+                  : 'bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30'
               }`}
             >
               {isDeactivating ? (
@@ -47,33 +49,33 @@ export function StatusConfirmDialog({
                 <UserCheck className="size-5" />
               )}
             </div>
-            <DialogTitle className="text-lg font-bold text-slate-900">
+            <DialogTitle className="text-lg font-bold text-[var(--text)]">
               {isDeactivating ? 'Deactivate Student' : 'Reactivate Student'}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-slate-600 pt-2 text-sm leading-relaxed">
+          <DialogDescription className="text-[var(--text-secondary)] pt-2 text-sm leading-relaxed font-normal">
             {isDeactivating ? (
               <>
                 Are you sure you want to deactivate{' '}
-                <strong className="text-slate-900">{student.full_name}</strong> ({student.class_level})?
+                <strong className="text-[var(--text)]">{student.full_name}</strong> ({student.class_level})?
                 They will be excluded from daily attendance marking and active fee reminders. Their history is preserved.
               </>
             ) : (
               <>
-                Reactivate <strong className="text-slate-900">{student.full_name}</strong> (
+                Reactivate <strong className="text-[var(--text)]">{student.full_name}</strong> (
                 {student.class_level})? They will immediately appear on the daily attendance screen.
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="pt-3 gap-2">
+        <DialogFooter className="pt-3 gap-3 flex flex-row justify-end">
           <Button
             type="button"
             variant="outline"
             disabled={loading}
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px]"
+            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
@@ -81,10 +83,10 @@ export function StatusConfirmDialog({
             type="button"
             disabled={loading}
             onClick={onConfirm}
-            className={`min-h-[44px] text-white font-medium ${
+            className={`min-h-[44px] px-6 rounded-[12px] text-white font-bold text-sm cursor-pointer shadow-xs ${
               isDeactivating
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-emerald-600 hover:bg-emerald-700'
+                ? 'bg-[var(--absent)] hover:bg-[var(--absent-text)]'
+                : 'bg-[var(--present)] hover:bg-[var(--present-text)]'
             }`}
           >
             {loading
@@ -98,4 +100,3 @@ export function StatusConfirmDialog({
     </Dialog>
   )
 }
-

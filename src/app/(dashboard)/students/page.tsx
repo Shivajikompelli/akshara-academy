@@ -4,17 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StudentFormDialog } from '@/components/students/student-form-dialog'
 import { StatusConfirmDialog } from '@/components/students/status-confirm-dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { InitialsAvatar } from '@/components/ui/initials-avatar'
 import {
   Plus,
   Search,
@@ -117,6 +107,10 @@ export default function StudentsPage() {
     () => students.filter((s) => s.status === 'active').length,
     [students]
   )
+  const inactiveCount = useMemo(
+    () => students.filter((s) => s.status === 'inactive').length,
+    [students]
+  )
 
   // Status change handler (Deactivate / Reactivate)
   function handleOpenStatusDialog(student: Student) {
@@ -173,406 +167,297 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+    <div className="space-y-6 max-w-[960px] mx-auto pb-16">
+      {/* 1. TOP HEADER: Single primary button "Add student" */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Students</h1>
-            <Badge variant="secondary" className="text-xs bg-slate-200 text-slate-800 font-semibold">
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
+              Students
+            </h1>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30">
               {activeCount} Active
-            </Badge>
+            </span>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Student registry, contact details, and class enrollment.
+          <p className="text-sm font-normal text-[var(--text-secondary)] mt-0.5">
+            Student registry, parent contacts, and class enrollment.
           </p>
         </div>
 
-        <Button
+        {/* Single Primary Button */}
+        <button
           type="button"
           onClick={handleOpenAdd}
-          className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm px-5"
+          className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg cursor-pointer transition-all active:scale-[0.98] self-start sm:self-auto"
         >
-          <Plus className="size-4" />
-          <span>Add Student</span>
-        </Button>
+          <Plus className="size-4.5 stroke-[2.5]" />
+          <span>Add student</span>
+        </button>
       </div>
 
       {errorMsg && (
-        <div className="p-4 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 flex items-center justify-between">
+        <div className="p-4 bg-[var(--absent-bg)] text-[var(--absent-text)] text-sm rounded-[16px] border border-[var(--absent)]/30 flex items-center justify-between">
           <span>{errorMsg}</span>
-          <Button
-            size="sm"
-            variant="outline"
+          <button
+            type="button"
             onClick={fetchStudents}
-            className="text-xs bg-white text-red-700 border-red-300"
+            className="text-xs font-bold px-3 py-1.5 rounded-[8px] bg-white border border-[var(--absent)]/30 hover:bg-[var(--absent-bg)] cursor-pointer"
           >
-            <RefreshCw className="size-3 mr-1" /> Retry
-          </Button>
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
-        {/* Search Input */}
-        <div className="md:col-span-5 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-          <Input
-            placeholder="Search by name, school, or phone..."
+      {/* 2. SEARCH AT THE TOP & FILTERS AS PILLS */}
+      <div className="space-y-3">
+        {/* Search input at the top */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)]" />
+          <input
+            type="text"
+            placeholder="Search by student name, school, parent, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-11 text-base bg-white border-slate-300"
+            className="w-full h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-base text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
 
-        {/* Class Filter Dropdown */}
-        <div className="md:col-span-4">
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full h-11 px-3 rounded-md border border-slate-300 bg-white text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            <option value="all">All Classes</option>
-            {CLASS_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Status Filter */}
-        <div className="md:col-span-3">
-          <div className="grid grid-cols-3 h-11 p-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-600">
+        {/* Filters as Pills */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          {/* Status filter pills */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1">
+              Status:
+            </span>
             <button
               type="button"
               onClick={() => setStatusFilter('active')}
-              className={`rounded-md transition-colors ${
+              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === 'active'
-                  ? 'bg-white text-blue-700 font-semibold shadow-xs'
-                  : 'hover:text-slate-900'
+                  ? 'bg-[var(--primary)] text-white shadow-xs'
+                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
-              Active
+              Active ({activeCount})
             </button>
             <button
               type="button"
               onClick={() => setStatusFilter('inactive')}
-              className={`rounded-md transition-colors ${
+              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === 'inactive'
-                  ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                  : 'hover:text-slate-900'
+                  ? 'bg-[var(--primary)] text-white shadow-xs'
+                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
-              Inactive
+              Inactive ({inactiveCount})
             </button>
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
-              className={`rounded-md transition-colors ${
+              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === 'all'
-                  ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                  : 'hover:text-slate-900'
+                  ? 'bg-[var(--primary)] text-white shadow-xs'
+                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
-              All
+              All ({students.length})
             </button>
+          </div>
+
+          {/* Class filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1 shrink-0">
+              Class:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedClass('all')}
+              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                selectedClass === 'all'
+                  ? 'bg-[var(--primary)] text-white shadow-xs'
+                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
+              }`}
+            >
+              All Classes
+            </button>
+            {CLASS_OPTIONS.map((cls) => (
+              <button
+                key={cls}
+                type="button"
+                onClick={() => setSelectedClass(cls)}
+                className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  selectedClass === cls
+                    ? 'bg-[var(--primary)] text-white shadow-xs'
+                    : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
+                }`}
+              >
+                {cls}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Main Student List */}
+      {/* 3. STUDENT LIST ROWS */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-500 shadow-xs">
-          <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-blue-600" />
-          <p className="text-sm font-medium">Loading students...</p>
+        <div className="bg-white rounded-[24px] border border-[var(--card-border)] p-12 text-center text-[var(--text-secondary)] shadow-2xs">
+          <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-[var(--primary)]" />
+          <p className="text-sm font-bold">Loading students...</p>
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="bg-white rounded-lg border border-dashed border-slate-300 p-12 text-center shadow-xs">
-          <Users className="size-10 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-semibold text-slate-900">No students found</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+        <div className="bg-white rounded-[24px] border border-dashed border-[var(--card-border)] p-12 text-center shadow-2xs">
+          <Users className="size-10 mx-auto text-[var(--text-secondary)] opacity-50 mb-3" />
+          <h3 className="text-base font-bold text-[var(--text)]">No students found</h3>
+          <p className="text-sm font-normal text-[var(--text-secondary)] mt-1 max-w-sm mx-auto">
             {searchQuery || selectedClass !== 'all' || statusFilter !== 'all'
-              ? 'Try adjusting your search keywords or class filters.'
+              ? 'Try adjusting your search query, status, or class filter pills.'
               : 'Start by adding students to Akshara Academy.'}
           </p>
           <div className="mt-4">
             {searchQuery || selectedClass !== 'all' || statusFilter !== 'all' ? (
-              <Button
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => {
                   setSearchQuery('')
                   setSelectedClass('all')
                   setStatusFilter('all')
                 }}
-                className="min-h-[44px]"
+                className="min-h-[44px] px-5 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-bold text-[var(--primary)] hover:bg-[var(--primary-soft)] cursor-pointer"
               >
                 Clear Filters
-              </Button>
+              </button>
             ) : (
-              <Button
+              <button
+                type="button"
                 onClick={handleOpenAdd}
-                className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white"
+                className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] text-white font-bold text-sm cursor-pointer shadow-xs"
               >
-                <Plus className="size-4 mr-1.5" /> Add Student
-              </Button>
+                Add Student
+              </button>
             )}
           </div>
         </div>
       ) : (
-        <>
-          {/* Desktop Table: Columns: name, class, school, parent name, phone, admission date, status, actions */}
-          <div className="hidden md:block bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="font-semibold text-slate-700">Student Name</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Class</TableHead>
-                  <TableHead className="font-semibold text-slate-700">School</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Parent Name</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Phone</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Admission Date</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                  <TableHead className="text-right font-semibold text-slate-700">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id} className="hover:bg-slate-50/70">
-                    {/* Name */}
-                    <TableCell className="py-3.5">
-                      <div className="font-semibold text-slate-900 text-base">
-                        {student.full_name}
-                      </div>
-                      {student.admission_no && (
-                        <span className="font-mono text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                          {student.admission_no}
-                        </span>
-                      )}
-                    </TableCell>
-
-                    {/* Class */}
-                    <TableCell className="py-3.5">
-                      <Badge variant="outline" className="font-semibold text-blue-800 bg-blue-50 border-blue-200">
-                        {student.class_level}
-                      </Badge>
-                    </TableCell>
-
-                    {/* School */}
-                    <TableCell className="py-3.5 text-sm text-slate-700">
-                      {student.school ? (
-                        <div className="flex items-center gap-1.5">
-                          <Building className="size-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[180px]">{student.school}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic text-xs">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* Parent Name */}
-                    <TableCell className="py-3.5 font-medium text-slate-800 text-sm">
-                      {student.parent_name}
-                    </TableCell>
-
-                    {/* Phone + WhatsApp badge */}
-                    <TableCell className="py-3.5">
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={`tel:${student.phone}`}
-                          className="font-mono text-xs text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          <Phone className="size-3 text-slate-400" />
-                          <span>{student.phone}</span>
-                        </a>
-                        {student.whatsapp_opt_in ? (
-                          <span
-                            title="Parent opted in to WhatsApp alerts"
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200"
-                          >
-                            <MessageSquare className="size-2.5" /> WA
-                          </span>
-                        ) : (
-                          <span
-                            title="No WhatsApp alerts"
-                            className="text-[10px] text-slate-400"
-                          >
-                            No WA
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Admission Date */}
-                    <TableCell className="py-3.5 text-xs text-slate-600 whitespace-nowrap">
-                      {formatDate(student.admission_date)}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="py-3.5">
-                      {student.status === 'active' ? (
-                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0 text-xs font-semibold">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="bg-slate-200 text-slate-600 border-0 text-xs font-medium"
-                        >
-                          Inactive
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="py-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenEdit(student)}
-                          className="min-h-[36px] text-xs gap-1 border-slate-300 text-slate-700 hover:bg-slate-100"
-                        >
-                          <Edit className="size-3.5" /> Edit
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleOpenStatusDialog(student)}
-                          className={`min-h-[36px] text-xs gap-1 ${
-                            student.status === 'active'
-                              ? 'text-slate-600 hover:text-red-600 hover:bg-red-50'
-                              : 'text-emerald-700 hover:bg-emerald-50'
-                          }`}
-                        >
-                          {student.status === 'active' ? (
-                            <>
-                              <UserX className="size-3.5" /> Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="size-3.5" /> Reactivate
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Cards View */}
-          <div className="grid grid-cols-1 gap-3 md:hidden">
-            {filteredStudents.map((student) => (
-              <div
-                key={student.id}
-                className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 shadow-xs"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 leading-tight">
+        <div className="space-y-3">
+          {filteredStudents.map((student) => (
+            <div
+              key={student.id}
+              onClick={() => handleOpenEdit(student)}
+              className="bg-white rounded-[20px] border border-[var(--card-border)]/70 p-4 sm:p-5 shadow-2xs hover:border-[var(--primary)]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
+            >
+              {/* Left: Avatar + Name, Admission, Class and School */}
+              <div className="flex items-center gap-3.5 min-w-0 md:w-5/12">
+                <InitialsAvatar name={student.full_name} size="md" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-base text-[var(--text)] truncate">
                       {student.full_name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs font-semibold text-blue-800 bg-blue-50 border-blue-200">
-                        {student.class_level}
-                      </Badge>
-                      {student.school && (
-                        <span className="text-xs text-slate-500 truncate max-w-[150px]">
-                          {student.school}
-                        </span>
-                      )}
-                    </div>
+                    </span>
+                    {student.admission_no && (
+                      <span className="text-xs font-normal text-[var(--text-secondary)] bg-[var(--primary-soft)] px-2 py-0.5 rounded-full shrink-0">
+                        #{student.admission_no}
+                      </span>
+                    )}
                   </div>
+                  <div className="text-sm font-normal text-[var(--text-secondary)] mt-0.5 truncate flex items-center gap-1.5">
+                    <span className="font-semibold text-[var(--text)]">{student.class_level}</span>
+                    {student.school && (
+                      <>
+                        <span className="opacity-40">·</span>
+                        <span className="truncate flex items-center gap-1">
+                          <Building className="size-3 text-[var(--text-secondary)] shrink-0" />
+                          <span>{student.school}</span>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                  {student.status === 'active' ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 border-0 text-xs font-semibold shrink-0">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="secondary"
-                      className="bg-slate-200 text-slate-600 border-0 text-xs font-medium shrink-0"
+              {/* Middle: Parent Name and Phone */}
+              <div className="text-sm md:w-4/12 space-y-0.5">
+                <div className="font-normal text-[var(--text)]">
+                  Parent: <strong className="font-bold">{student.parent_name}</strong>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <a
+                    href={`tel:${student.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-mono text-sm text-[var(--primary)] hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <Phone className="size-3 text-[var(--text-secondary)]" />
+                    <span>{student.phone}</span>
+                  </a>
+                  {student.whatsapp_opt_in ? (
+                    <span
+                      title="Parent opted in to WhatsApp alerts"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--whatsapp-bg)] text-[var(--whatsapp-text)] text-xs font-bold border border-[var(--whatsapp)]/30"
                     >
-                      Inactive
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Parent</span>
-                    <span className="font-medium text-slate-800">{student.parent_name}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Phone</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <a
-                        href={`tel:${student.phone}`}
-                        className="font-mono text-blue-600 font-medium"
-                      >
-                        {student.phone}
-                      </a>
-                      {student.whatsapp_opt_in && (
-                        <span className="px-1 rounded bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200">
-                          WA
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                  <span>Admitted: {formatDate(student.admission_date)}</span>
-                  {student.admission_no && (
-                    <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">
-                      {student.admission_no}
+                      <MessageSquare className="size-3 text-[var(--whatsapp)]" />
+                      <span>WA</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[var(--text-secondary)] opacity-60">
+                      No WA
                     </span>
                   )}
                 </div>
+              </div>
 
-                {/* Mobile Action Buttons with large tap targets */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                  <Button
+              {/* Right: Status badge & Actions */}
+              <div
+                className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--card-border)]/40 md:w-3/12"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {student.status === 'active' ? (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30">
+                    Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-[var(--text-secondary)] border border-[var(--card-border)]/60">
+                    Inactive
+                  </span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => handleOpenEdit(student)}
-                    className="min-h-[44px] text-sm font-medium border-slate-300 text-slate-700"
+                    className="min-h-[40px] px-3.5 rounded-[12px] text-xs font-bold border border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                   >
-                    <Edit className="size-4 mr-1.5" /> Edit
-                  </Button>
+                    <Edit className="size-3.5" />
+                    <span>Edit</span>
+                  </button>
 
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
                     onClick={() => handleOpenStatusDialog(student)}
-                    className={`min-h-[44px] text-sm font-medium ${
+                    className={`min-h-[40px] px-3 rounded-[12px] text-xs font-bold cursor-pointer transition-colors ${
                       student.status === 'active'
-                        ? 'text-slate-600 hover:text-red-600 hover:bg-red-50'
-                        : 'text-emerald-700 hover:bg-emerald-50'
+                        ? 'text-[var(--text-secondary)] hover:text-[var(--absent-text)] hover:bg-[var(--absent-bg)]'
+                        : 'text-[var(--present-text)] hover:bg-[var(--present-bg)]'
                     }`}
                   >
                     {student.status === 'active' ? (
-                      <>
-                        <UserX className="size-4 mr-1.5" /> Deactivate
-                      </>
+                      <span className="flex items-center gap-1">
+                        <UserX className="size-3.5" />
+                        <span className="hidden sm:inline">Deactivate</span>
+                      </span>
                     ) : (
-                      <>
-                        <UserCheck className="size-4 mr-1.5" /> Reactivate
-                      </>
+                      <span className="flex items-center gap-1">
+                        <UserCheck className="size-3.5" />
+                        <span className="hidden sm:inline">Reactivate</span>
+                      </span>
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* Add / Edit Dialog */}
+      {/* Add / Edit Sheet / Dialog */}
       <StudentFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
