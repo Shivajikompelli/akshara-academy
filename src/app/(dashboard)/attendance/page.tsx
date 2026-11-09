@@ -1,13 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
-  CheckCircle2,
-  XCircle,
   Search,
   Users,
   Save,
@@ -16,7 +11,6 @@ import {
   Clock,
   RotateCcw,
   Check,
-  Building,
   Send,
   Info,
   ChevronDown,
@@ -36,8 +30,12 @@ interface AttendanceItem {
 export default function AttendancePage() {
   const [availableClasses, setAvailableClasses] = useState<string[]>([])
   const [selectedClass, setSelectedClass] = useState<string>('')
-  const [selectedDate, setSelectedDate] = useState<string>('')
-  const [todayStr, setTodayStr] = useState<string>('')
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0]
+  })
+  const [todayStr] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0]
+  })
 
   // Student list state for the chosen class
   const [attendanceList, setAttendanceList] = useState<AttendanceItem[]>([])
@@ -57,149 +55,157 @@ export default function AttendancePage() {
   const [alertResult, setAlertResult] = useState<AbsentAlertResult | null>(null)
   const [retryingAlerts, setRetryingAlerts] = useState(false)
 
-  // Initialize date on client mount (Next.js 16 prerender safe)
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
-    setTodayStr(today)
-    setSelectedDate(today)
-  }, [])
-
   // 1. Fetch all distinct classes that have active students
-  const fetchAvailableClasses = useCallback(async () => {
-    const supabase = createClient()
-    try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('class_level')
-        .eq('status', 'active')
+  useEffect(() => {
+    let ignore = false
 
-      if (error) throw error
+    async function initClasses() {
+      const supabase = createClient()
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('class_level')
+          .eq('status', 'active')
 
-      if (data && data.length > 0) {
-        const unique = Array.from(new Set(data.map((s) => s.class_level)))
-        // Natural sort: Class 1, Class 2, ..., Class 12
-        unique.sort((a, b) => {
-          const numA = parseInt(a.replace(/\D/g, ''), 10) || 0
-          const numB = parseInt(b.replace(/\D/g, ''), 10) || 0
-          return numA - numB
-        })
-        setAvailableClasses(unique)
+        if (error) throw error
+        if (ignore) return
 
-        // Select first available class if not set or invalid (respecting ?class= URL param)
-        setSelectedClass((current) => {
-          if (current && unique.includes(current)) return current
-          if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search)
-            const paramCls = params.get('class')
-            if (paramCls && unique.includes(paramCls)) return paramCls
-          }
-          return unique[0] || ''
-        })
-      } else {
-        setAvailableClasses([])
-        setSelectedClass('')
+        if (data && data.length > 0) {
+          const unique = Array.from(new Set(data.map((s) => s.class_level)))
+          // Natural sort: Class 1, Class 2, ..., Class 12
+          unique.sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, ''), 10) || 0
+            const numB = parseInt(b.replace(/\D/g, ''), 10) || 0
+            return numA - numB
+          })
+          setAvailableClasses(unique)
+
+          // Select first available class if not set or invalid (respecting ?class= URL param)
+          setSelectedClass((current) => {
+            if (current && unique.includes(current)) return current
+            if (typeof window !== 'undefined') {
+              const params = new URLSearchParams(window.location.search)
+              const paramCls = params.get('class')
+              if (paramCls && unique.includes(paramCls)) return paramCls
+            }
+            return unique[0] || ''
+          })
+        } else {
+          setAvailableClasses([])
+          setSelectedClass('')
+        }
+      } catch (err) {
+        console.error('Failed to load active classes:', err)
       }
-    } catch (err) {
-      console.error('Failed to load active classes:', err)
+    }
+
+    initClasses()
+    return () => {
+      ignore = true
     }
   }, [])
-
-  useEffect(() => {
-    fetchAvailableClasses()
-  }, [fetchAvailableClasses])
 
   // 2. Fetch students & existing attendance for selectedClass and selectedDate
-  const loadClassAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedDate) {
-      setLoading(false)
-      return
-    }
+  useEffect(() => {
+    let ignore = false
 
-    setLoading(true)
-    const supabase = createClient()
-
-    try {
-      // Fetch all active students in this class, sorted by name
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('class_level', selectedClass)
-        .eq('status', 'active')
-        .order('full_name', { ascending: true })
-
-      if (studentsError) throw studentsError
-
-      const students: Student[] = studentsData || []
-
-      if (students.length === 0) {
-        setAttendanceList([])
-        setIsTaken(false)
-        setTakenTime(null)
-        setHasUnsavedChanges(false)
+    async function loadAttendance() {
+      if (!selectedClass || !selectedDate) {
         setLoading(false)
         return
       }
 
-      // Fetch existing attendance records for these students on the chosen date
-      const studentIds = students.map((s) => s.id)
-      const { data: existingRecords, error: attError } = await supabase
-        .from('attendance')
-        .select('student_id, status, created_at')
-        .eq('att_date', selectedDate)
-        .in('student_id', studentIds)
+      setLoading(true)
+      const supabase = createClient()
 
-      if (attError) throw attError
+      try {
+        // Fetch all active students in this class, sorted by name
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('class_level', selectedClass)
+          .eq('status', 'active')
+          .order('full_name', { ascending: true })
 
-      const attendanceMap = new Map<string, 'present' | 'absent'>()
-      let latestCreatedAt: string | null = null
+        if (studentsError) throw studentsError
+        if (ignore) return
 
-      if (existingRecords && existingRecords.length > 0) {
-        setIsTaken(true)
-        existingRecords.forEach((rec) => {
-          attendanceMap.set(rec.student_id, rec.status as 'present' | 'absent')
-          if (rec.created_at) {
-            latestCreatedAt = rec.created_at
-          }
-        })
+        const students: Student[] = studentsData || []
 
-        if (latestCreatedAt) {
-          const dt = new Date(latestCreatedAt)
-          setTakenTime(
-            dt.toLocaleTimeString('en-IN', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          )
-        } else {
-          setTakenTime('saved')
+        if (students.length === 0) {
+          setAttendanceList([])
+          setIsTaken(false)
+          setTakenTime(null)
+          setHasUnsavedChanges(false)
+          setLoading(false)
+          return
         }
-      } else {
-        setIsTaken(false)
-        setTakenTime(null)
+
+        // Fetch existing attendance records for these students on the chosen date
+        const studentIds = students.map((s) => s.id)
+        const { data: existingRecords, error: attError } = await supabase
+          .from('attendance')
+          .select('student_id, status, created_at')
+          .eq('att_date', selectedDate)
+          .in('student_id', studentIds)
+
+        if (attError) throw attError
+        if (ignore) return
+
+        const attendanceMap = new Map<string, 'present' | 'absent'>()
+        let latestCreatedAt: string | null = null
+
+        if (existingRecords && existingRecords.length > 0) {
+          setIsTaken(true)
+          existingRecords.forEach((rec) => {
+            attendanceMap.set(rec.student_id, rec.status as 'present' | 'absent')
+            if (rec.created_at) {
+              latestCreatedAt = rec.created_at
+            }
+          })
+
+          if (latestCreatedAt) {
+            const dt = new Date(latestCreatedAt)
+            setTakenTime(
+              dt.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            )
+          } else {
+            setTakenTime('saved')
+          }
+        } else {
+          setIsTaken(false)
+          setTakenTime(null)
+        }
+
+        // Build state: Default to PRESENT
+        const initialList: AttendanceItem[] = students.map((student) => ({
+          student,
+          status: attendanceMap.get(student.id) || 'present',
+        }))
+
+        setAttendanceList(initialList)
+        setHasUnsavedChanges(false)
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Failed to load attendance:', err)
+          const msg = err instanceof Error ? err.message : 'Failed to load attendance records.'
+          toast.error(msg)
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
       }
+    }
 
-      // Build state:
-      // If attendance was already saved, use saved status.
-      // If a student was added to the class after attendance was saved (or not saved yet), default to PRESENT.
-      const initialList: AttendanceItem[] = students.map((student) => ({
-        student,
-        status: attendanceMap.get(student.id) || 'present', // Everyone defaults to PRESENT
-      }))
-
-      setAttendanceList(initialList)
-      setHasUnsavedChanges(false)
-    } catch (err: unknown) {
-      console.error('Failed to load attendance:', err)
-      const msg = err instanceof Error ? err.message : 'Failed to load attendance records.'
-      toast.error(msg)
-    } finally {
-      setLoading(false)
+    loadAttendance()
+    return () => {
+      ignore = true
     }
   }, [selectedClass, selectedDate])
-
-  useEffect(() => {
-    loadClassAttendance()
-  }, [loadClassAttendance])
 
   // Warn if leaving page with unsaved changes
   useEffect(() => {
