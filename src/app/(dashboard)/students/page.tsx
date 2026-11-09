@@ -19,7 +19,6 @@ import {
   Building,
   ChevronDown,
 } from 'lucide-react'
-import { formatDate } from '@/lib/formatters'
 import { CLASS_OPTIONS, type Student } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -71,8 +70,42 @@ export default function StudentsPage() {
   }, [])
 
   useEffect(() => {
-    fetchStudents()
-  }, [fetchStudents])
+    let ignore = false
+
+    async function loadStudents() {
+      const supabase = createClient()
+
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .order('full_name', { ascending: true })
+
+        if (error) throw error
+
+        if (!ignore) {
+          setStudents(data || [])
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Failed to load students:', err)
+          const msg = err instanceof Error ? err.message : 'Failed to load students.'
+          setErrorMsg(msg)
+          toast.error(msg)
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadStudents()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   // Fast filtering & default sorting by student name
   const filteredStudents = useMemo(() => {

@@ -6,7 +6,6 @@ import {
   CreditCard,
   Search,
   RefreshCw,
-  AlertTriangle,
   History,
   PlusCircle,
   Receipt,
@@ -123,10 +122,15 @@ export default function FeesPage() {
   const [fees, setFees] = useState<FeeSummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [generatingFees, setGeneratingFees] = useState(false)
-  const [todayStr, setTodayStr] = useState<string>('')
+  const [todayStr] = useState<string>(() => new Date().toISOString().split('T')[0])
 
   // Month Controls (default current month)
-  const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
+    return `${currentYear}-${currentMonth}`
+  })
 
   // Filters & Search: Tabs: All / Pending / Paid, with an Overdue filter chip
   const [statusTab, setStatusTab] = useState<'all' | 'pending' | 'paid'>('all')
@@ -160,13 +164,7 @@ export default function FeesPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [actionsMenuOpen])
 
-  useEffect(() => {
-    const now = new Date()
-    setTodayStr(now.toISOString().split('T')[0])
-    const currentYear = now.getFullYear()
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
-    setSelectedMonth(`${currentYear}-${currentMonth}`)
-  }, [])
+
 
   // Adjust month by step (-1 or +1)
   function adjustMonth(delta: number) {
@@ -264,8 +262,95 @@ export default function FeesPage() {
   }, [])
 
   useEffect(() => {
-    fetchFeesData()
-  }, [fetchFeesData])
+    let ignore = false
+
+    async function loadFees() {
+      const supabase = createClient()
+
+      try {
+        const { data: summaryData, error: summaryError } = await supabase
+          .from('fee_summary')
+          .select('*')
+
+        if (summaryError) throw summaryError
+
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('students')
+          .select('id, class_level, parent_name, phone')
+
+        if (studentsError) throw studentsError
+
+        const studentsMap = new Map<string, { class_level: string; parent_name: string; phone: string }>()
+        ;(studentsData || []).forEach((s) => {
+          studentsMap.set(s.id, {
+            class_level: s.class_level,
+            parent_name: s.parent_name,
+            phone: s.phone,
+          })
+        })
+
+        const { data: reminderLogs } = await supabase
+          .from('message_log')
+          .select('fee_id, status, related_date, created_at')
+          .eq('kind', 'fee_reminder')
+          .neq('status', 'failed')
+          .not('fee_id', 'is', null)
+
+        const remindersMap = new Map<string, { count: number; lastDate: string | null }>()
+        ;(reminderLogs || []).forEach((r) => {
+          if (!r.fee_id) return
+          const prev = remindersMap.get(r.fee_id) || { count: 0, lastDate: null }
+          prev.count += 1
+          const dateVal = r.related_date || (r.created_at ? r.created_at.split('T')[0] : null)
+          if (!prev.lastDate || (dateVal && dateVal > prev.lastDate)) {
+            prev.lastDate = dateVal
+          }
+          remindersMap.set(r.fee_id, prev)
+        })
+
+        const enriched: FeeSummaryRow[] = (summaryData || []).map((row) => {
+          const studentInfo = studentsMap.get(row.student_id)
+          const reminderInfo = remindersMap.get(row.fee_id)
+          return {
+            fee_id: row.fee_id,
+            student_id: row.student_id,
+            full_name: row.full_name,
+            period: row.period,
+            amount_due: Number(row.amount_due) || 0,
+            due_date: row.due_date,
+            amount_paid: Number(row.amount_paid) || 0,
+            balance: Number(row.balance) || 0,
+            status: row.status as 'paid' | 'partial' | 'pending' | 'overdue',
+            class_level: studentInfo?.class_level,
+            parent_name: studentInfo?.parent_name,
+            phone: studentInfo?.phone,
+            reminders_sent: reminderInfo?.count || 0,
+            last_reminder_date: reminderInfo?.lastDate || null,
+          }
+        })
+
+        if (!ignore) {
+          setFees(enriched)
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Failed to load fees:', err)
+          const msg = err instanceof Error ? err.message : 'Failed to load fees dashboard'
+          toast.error(msg)
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadFees()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   // "Generate fees for this month" action
   async function handleGenerateMonthlyFees() {
