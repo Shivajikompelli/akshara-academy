@@ -264,36 +264,27 @@ export default function StudentsPage() {
             </button>
           </div>
 
-          {/* Class filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1 shrink-0">
-              Class:
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedClass('all')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                selectedClass === 'all'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
+          {/* Class filter dropdown */}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="class-filter"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
             >
-              All Classes
-            </button>
-            {CLASS_OPTIONS.map((cls) => (
-              <button
-                key={cls}
-                type="button"
-                onClick={() => setSelectedClass(cls)}
-                className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                  selectedClass === cls
-                    ? 'bg-[var(--primary)] text-white shadow-xs'
-                    : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-                }`}
-              >
-                {cls}
-              </button>
-            ))}
+              Class:
+            </label>
+            <select
+              id="class-filter"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
+            >
+              <option value="all">All Classes</option>
+              {CLASS_OPTIONS.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
