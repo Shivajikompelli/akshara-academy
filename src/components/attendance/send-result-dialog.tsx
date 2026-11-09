@@ -53,7 +53,7 @@ export function SendResultDialog({
               WhatsApp Alert Summary
             </DialogTitle>
             {result.dry_run && (
-              <Badge className="bg-[var(--warn-bg)] text-[var(--warn-text)] border border-[var(--warn)]/30 font-bold text-xs rounded-full px-2.5 py-0.5">
+              <Badge className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs rounded-full px-2.5 py-0.5">
                 Dry Run Mode
               </Badge>
             )}
@@ -65,7 +65,7 @@ export function SendResultDialog({
 
         {/* Dry Run Banner */}
         {result.dry_run && (
-          <div className="p-3.5 rounded-[16px] border border-[var(--warn)]/30 bg-[var(--warn-bg)] text-[var(--warn-text)] text-xs flex items-start gap-2">
+          <div className="p-3.5 rounded-[16px] border border-[var(--attention)]/30 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs flex items-start gap-2">
             <Info className="size-4 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold">Dry run mode active:</span> Messages were logged in the database, but Meta WhatsApp API was not charged or called.
@@ -93,8 +93,8 @@ export function SendResultDialog({
 
           {/* Skipped for No Consent */}
           {result.skipped_no_consent && result.skipped_no_consent.length > 0 && (
-            <div className="p-3.5 rounded-[16px] bg-[var(--warn-bg)] border border-[var(--warn)]/30 space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold text-[var(--warn-text)]">
+            <div className="p-3.5 rounded-[16px] bg-[var(--attention-bg)] border border-[var(--attention)]/30 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--attention-text)]">
                 <span>Skipped (no parent consent):</span>
                 <span>{result.skipped_no_consent.length}</span>
               </div>
@@ -108,15 +108,15 @@ export function SendResultDialog({
 
           {/* Failed Count */}
           {result.failed > 0 && (
-            <div className="p-3.5 rounded-[16px] bg-[var(--absent-bg)] border border-[var(--absent)]/30 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-[var(--absent-text)]">
+            <div className="p-3.5 rounded-[16px] bg-[var(--attention-bg)] border border-[var(--attention)]/30 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--attention-text)]">
                 <span className="flex items-center gap-1.5">
-                  <XCircle className="size-4 text-[var(--absent)]" />
+                  <XCircle className="size-4 text-[var(--attention-text)]" />
                   <span>Failed to send:</span>
                 </span>
-                <span className="text-base font-bold text-[var(--absent-text)]">{result.failed}</span>
+                <span className="text-base font-bold text-[var(--attention-text)]">{result.failed}</span>
               </div>
-              <p className="text-xs text-[var(--absent-text)]">
+              <p className="text-xs text-[var(--attention-text)]">
                 Some messages encountered errors. You can retry sending the failed alerts now.
               </p>
             </div>
@@ -129,7 +129,7 @@ export function SendResultDialog({
               type="button"
               disabled={retrying}
               onClick={onRetryFailed}
-              className="min-h-[44px] px-5 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-sm gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-5 rounded-[16px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-sm gap-1.5 cursor-pointer"
             >
               <RotateCcw className="size-4" />
               <span>{retrying ? 'Retrying...' : 'Retry Failed Alerts'}</span>

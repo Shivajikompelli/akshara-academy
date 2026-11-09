@@ -68,9 +68,9 @@ export default function LoginPage() {
           {errorMsg && (
             <div
               role="alert"
-              className="mb-5 p-3.5 rounded-[12px] bg-[var(--absent-bg)] border border-[var(--absent)]/20 text-sm font-medium text-[var(--absent-text)] flex items-start gap-2.5"
+              className="mb-5 p-3.5 rounded-[12px] bg-[var(--attention-bg)] border border-[var(--attention)]/30 text-sm font-medium text-[var(--attention-text)] flex items-start gap-2.5"
             >
-              <AlertCircle className="size-4 shrink-0 mt-0.5 text-[var(--absent)]" />
+              <AlertCircle className="size-4 shrink-0 mt-0.5 text-[var(--attention-text)]" />
               <span>{errorMsg}</span>
             </div>
           )}

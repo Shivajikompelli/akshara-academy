@@ -252,7 +252,7 @@ export default function MessageLogPage() {
         )
       case 'failed':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--absent-bg)] text-[var(--absent-text)] border border-[var(--absent)]/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
             <AlertCircle className="size-3.5 stroke-[2.5]" />
             <span>Failed</span>
           </span>
@@ -291,7 +291,7 @@ export default function MessageLogPage() {
               type="button"
               onClick={handleRetryAllFailed}
               disabled={retryingAll || loading}
-              className="min-h-[44px] px-5 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+              className="min-h-[44px] px-5 rounded-[16px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
             >
               <RotateCcw className={`size-4 ${retryingAll ? 'animate-spin' : ''}`} />
               <span>{retryingAll ? 'Retrying...' : `Retry all failed (${failedCountInView})`}</span>
@@ -398,8 +398,8 @@ export default function MessageLogPage() {
               onClick={() => setStatusFilter('failed')}
               className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === 'failed'
-                  ? 'bg-[var(--absent)] text-white shadow-xs'
-                  : 'bg-white text-[var(--absent-text)] border border-[var(--absent)]/30 hover:border-[var(--absent)]'
+                  ? 'bg-[var(--attention)] text-white shadow-xs'
+                  : 'bg-white text-[var(--attention-text)] border border-[var(--attention)]/30 hover:border-[var(--attention)]'
               }`}
             >
               Failed ({logs.filter((l) => l.status === 'failed').length})
@@ -444,7 +444,7 @@ export default function MessageLogPage() {
                 key={log.id}
                 onClick={() => setSelectedLog(log)}
                 className={`bg-white rounded-[20px] border p-4 sm:p-5 shadow-2xs hover:border-[var(--primary)]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer ${
-                  isFailed ? 'border-[var(--absent)]/40 bg-[var(--absent-bg)]/30' : 'border-[var(--card-border)]/70'
+                  isFailed ? 'border-[var(--attention)]/40 bg-[var(--attention-bg)]/30' : 'border-[var(--card-border)]/70'
                 }`}
               >
                 {/* Left: Avatar + Student info */}
@@ -452,7 +452,7 @@ export default function MessageLogPage() {
                   <InitialsAvatar
                     name={log.students?.full_name || 'Student'}
                     size="md"
-                    className={isFailed ? 'bg-[var(--absent)]/15 text-[var(--absent-text)] border-[var(--absent)]/30' : ''}
+                    className={isFailed ? 'bg-[var(--attention)]/15 text-[var(--attention-text)] border-[var(--attention)]/30' : ''}
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -483,7 +483,7 @@ export default function MessageLogPage() {
                   </div>
 
                   {isFailed && log.error ? (
-                    <p className="text-xs font-bold text-[var(--absent-text)] truncate" title={log.error}>
+                    <p className="text-xs font-bold text-[var(--attention-text)] truncate" title={log.error}>
                       Error: {log.error}
                     </p>
                   ) : (
@@ -506,7 +506,7 @@ export default function MessageLogPage() {
                         type="button"
                         onClick={() => handleRetrySingle(log.id)}
                         disabled={isRetrying}
-                        className="min-h-[40px] px-3.5 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+                        className="min-h-[40px] px-3.5 rounded-[12px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
                       >
                         <RotateCcw className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
                         <span>{isRetrying ? 'Retrying...' : 'Retry'}</span>
@@ -571,7 +571,7 @@ export default function MessageLogPage() {
                     {selectedLog.status === 'sent' || selectedLog.status === 'delivered' ? (
                       <CheckCheck className="size-4 stroke-[2.5]" />
                     ) : selectedLog.status === 'failed' ? (
-                      <AlertCircle className="size-3.5 text-[var(--absent)]" />
+                      <AlertCircle className="size-3.5 text-[var(--attention-text)]" />
                     ) : (
                       <Clock className="size-3.5" />
                     )}
@@ -604,7 +604,7 @@ export default function MessageLogPage() {
 
                 {/* Error text for failed row */}
                 {selectedLog.status === 'failed' && selectedLog.error && (
-                  <div className="p-3 bg-[var(--absent-bg)] border border-[var(--absent)]/30 rounded-[12px] text-[var(--absent-text)] space-y-1 mt-2">
+                  <div className="p-3 bg-[var(--attention-bg)] border border-[var(--attention)]/30 rounded-[12px] text-[var(--attention-text)] space-y-1 mt-2">
                     <span className="font-bold flex items-center gap-1.5">
                       <AlertTriangle className="size-4" />
                       Failure Reason:
@@ -622,7 +622,7 @@ export default function MessageLogPage() {
                   type="button"
                   onClick={() => handleRetrySingle(selectedLog.id)}
                   disabled={retryingId === selectedLog.id}
-                  className="min-h-[44px] px-6 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="min-h-[44px] px-6 rounded-[16px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   <RotateCcw className={`size-4 ${retryingId === selectedLog.id ? 'animate-spin' : ''}`} />
                   <span>{retryingId === selectedLog.id ? 'Retrying...' : 'Retry Message Now'}</span>

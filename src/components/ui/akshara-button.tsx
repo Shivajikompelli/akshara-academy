@@ -19,12 +19,12 @@ export function AksharaButton({
   ...props
 }: AksharaButtonProps) {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold tracking-tight rounded-[12px] transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2'
+    'inline-flex items-center justify-center font-bold tracking-tight rounded-[16px] transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2'
 
   const sizeStyles = {
-    sm: 'min-h-[36px] px-3.5 text-sm gap-1.5',
-    md: 'min-h-[44px] px-5 text-base gap-2',
-    lg: 'min-h-[50px] px-6 text-base gap-2.5',
+    sm: 'min-h-[40px] px-4 text-sm gap-1.5',
+    md: 'min-h-[48px] px-6 text-base gap-2',
+    lg: 'min-h-[52px] px-7 text-base gap-2.5',
   }[size]
 
   const variantStyles = {
@@ -35,7 +35,7 @@ export function AksharaButton({
     tertiary:
       'bg-transparent text-[var(--primary)] hover:bg-[var(--primary-soft)] active:bg-[var(--primary-light)]',
     destructive:
-      'bg-[var(--absent)] text-white hover:bg-[var(--absent-text)] active:opacity-95 shadow-xs',
+      'bg-[#9A4A00] text-white hover:bg-[#853E00] active:opacity-95 shadow-xs',
   }[variant]
 
   return (

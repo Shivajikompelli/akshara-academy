@@ -196,12 +196,12 @@ export default function StudentsPage() {
       </div>
 
       {errorMsg && (
-        <div className="p-4 bg-[var(--absent-bg)] text-[var(--absent-text)] text-sm rounded-[16px] border border-[var(--absent)]/30 flex items-center justify-between">
+        <div className="p-4 bg-[var(--attention-bg)] text-[var(--attention-text)] text-sm rounded-[16px] border border-[var(--attention)]/30 flex items-center justify-between">
           <span>{errorMsg}</span>
           <button
             type="button"
             onClick={fetchStudents}
-            className="text-xs font-bold px-3 py-1.5 rounded-[8px] bg-white border border-[var(--absent)]/30 hover:bg-[var(--absent-bg)] cursor-pointer"
+            className="text-xs font-bold px-3 py-1.5 rounded-[8px] bg-white border border-[var(--attention)]/30 hover:bg-[var(--attention-bg)] cursor-pointer"
           >
             Retry
           </button>
@@ -434,7 +434,7 @@ export default function StudentsPage() {
                     onClick={() => handleOpenStatusDialog(student)}
                     className={`min-h-[40px] px-3 rounded-[12px] text-xs font-bold cursor-pointer transition-colors ${
                       student.status === 'active'
-                        ? 'text-[var(--text-secondary)] hover:text-[var(--absent-text)] hover:bg-[var(--absent-bg)]'
+                        ? 'text-[var(--text-secondary)] hover:text-[var(--attention-text)] hover:bg-[var(--attention-bg)]'
                         : 'text-[var(--present-text)] hover:bg-[var(--present-bg)]'
                     }`}
                   >

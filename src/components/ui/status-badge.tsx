@@ -29,7 +29,7 @@ export function StatusBadge({
     case 'partial':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--warn-bg)] text-[var(--warn-text)] border border-[var(--warn)]/20 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 ${className}`}
         >
           <Clock className="size-3.5 stroke-[2.5]" />
           <span>Partial</span>
@@ -38,7 +38,7 @@ export function StatusBadge({
     case 'overdue':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--absent-bg)] text-[var(--absent-text)] border border-[var(--absent)]/20 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 ${className}`}
         >
           <AlertCircle className="size-3.5 stroke-[2.5]" />
           <span>Overdue{daysOverdue ? ` (${daysOverdue}d)` : ''}</span>

@@ -1,7 +1,7 @@
 /**
  * WCAG 2.1 Contrast Ratio Verification Script
- * Validates text and background color pairs from akshara-ui-profile.md
- * Thresholds:
+ * Validates text and background color pairs from akshara-ui-profile.md (Bento version)
+ * Requirements:
  *  - Normal text (< 18px regular): >= 4.5:1
  *  - Large text (>= 18px or >= 14px bold) & UI icons: >= 3.0:1
  */
@@ -34,38 +34,44 @@ function getContrastRatio(hex1, hex2) {
 const COLOR_PAIRS = [
   // Primary Text & Secondary Text
   { name: 'Primary Text on White', text: '#1F2438', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
-  { name: 'Primary Text on App Background', text: '#1F2438', bg: '#F8F9FE', minRatio: 4.5, role: 'Normal Text' },
+  { name: 'Primary Text on App Background (#F8F9FE)', text: '#1F2438', bg: '#F8F9FE', minRatio: 4.5, role: 'Normal Text' },
   { name: 'Secondary Text on White', text: '#5A6378', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
-  { name: 'Secondary Text on App Background', text: '#5A6378', bg: '#F8F9FE', minRatio: 4.5, role: 'Normal Text' },
+  { name: 'Secondary Text on App Background (#F8F9FE)', text: '#5A6378', bg: '#F8F9FE', minRatio: 4.5, role: 'Normal Text' },
   
   // Decorative Text & Icons (>= 18px text / icons)
   { name: 'Decorative Text / Icons on White', text: '#7E869B', bg: '#FFFFFF', minRatio: 3.0, role: 'Large Text / Icons' },
   { name: 'Decorative Text / Icons on App Background', text: '#7E869B', bg: '#F8F9FE', minRatio: 3.0, role: 'Large Text / Icons' },
 
-  // Status Colors (Present)
-  { name: 'Present Text on Present Background', text: '#047857', bg: '#ECFDF5', minRatio: 4.5, role: 'Normal Text' },
+  // Status Colors (Present: #047857)
+  { name: 'Present Text on Present Background (#ECFDF5)', text: '#047857', bg: '#ECFDF5', minRatio: 4.5, role: 'Normal Text' },
   { name: 'Present Text on White', text: '#047857', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
 
-  // Status Colors (Absent)
-  { name: 'Absent Text on Absent Background', text: '#B42318', bg: '#FEF2F2', minRatio: 4.5, role: 'Normal Text' },
-  { name: 'Absent Text on White', text: '#B42318', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
+  // Attention Colors (NO RED: #9A4A00 text on #FFF1E0 / #FFF8F0 / #FFFFFF)
+  { name: 'Attention Text on Attention Background (#FFF1E0)', text: '#9A4A00', bg: '#FFF1E0', minRatio: 4.5, role: 'Normal Text' },
+  { name: 'Attention Text on Attention Row Tint (#FFF8F0)', text: '#9A4A00', bg: '#FFF8F0', minRatio: 4.5, role: 'Normal Text' },
+  { name: 'Attention Text on White', text: '#9A4A00', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
 
-  // Status Colors (Warn / Partial)
-  { name: 'Warn Text on Warn Background', text: '#8A5300', bg: '#FFFBEB', minRatio: 4.5, role: 'Normal Text' },
-  { name: 'Warn Text on White', text: '#8A5300', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
+  // Destructive Confirm Button (White text on solid #9A4A00)
+  { name: 'White Text on Destructive Button (#9A4A00)', text: '#FFFFFF', bg: '#9A4A00', minRatio: 4.5, role: 'Button Text' },
+
+  // Attendance Toggle (Selected Absent: #9A4A00 on #FFE0BD)
+  { name: 'Absent Toggle Text (#9A4A00) on #FFE0BD', text: '#9A4A00', bg: '#FFE0BD', minRatio: 4.5, role: 'Button Text' },
 
   // Status Colors (WhatsApp)
-  { name: 'WhatsApp Text on WhatsApp Background', text: '#146C43', bg: '#E7F8E8', minRatio: 4.5, role: 'Normal Text' },
+  { name: 'WhatsApp Text on WhatsApp Background (#E7F8E8)', text: '#146C43', bg: '#E7F8E8', minRatio: 4.5, role: 'Normal Text' },
   { name: 'WhatsApp Text on White', text: '#146C43', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
 
-  // Brand Buttons (Purple default)
+  // Brand Buttons & Links (Purple default)
   { name: 'White Text on Primary Button (#5B45E0)', text: '#FFFFFF', bg: '#5B45E0', minRatio: 4.5, role: 'Button Text' },
   { name: 'White Text on Primary Hover (#4D36D4)', text: '#FFFFFF', bg: '#4D36D4', minRatio: 4.5, role: 'Button Text' },
   { name: 'Primary Text on Primary Soft (#F4F2FD)', text: '#5B45E0', bg: '#F4F2FD', minRatio: 4.5, role: 'Normal Text' },
   { name: 'Primary Text on Primary Light (#EDEAFC)', text: '#5B45E0', bg: '#EDEAFC', minRatio: 4.5, role: 'Normal Text' },
+
+  // Inactive Navigation (#4B5468 on white bar)
+  { name: 'Inactive Nav Text (#4B5468) on White', text: '#4B5468', bg: '#FFFFFF', minRatio: 4.5, role: 'Normal Text' },
 ]
 
-console.log('=== Akshara Academy UI Contrast Ratio Test ===\n')
+console.log('=== Akshara Academy Bento UI Contrast Ratio Test ===\n')
 let failed = 0
 
 for (const pair of COLOR_PAIRS) {
@@ -86,7 +92,6 @@ console.log(`\nResults: ${COLOR_PAIRS.length - failed} passed, ${failed} failed.
 if (failed > 0) {
   process.exit(1)
 } else {
-  console.log('All profile contrast ratios satisfy WCAG 2.1 AA specifications!')
+  console.log('All profile contrast ratios satisfy WCAG 2.1 AA specifications with NO RED!')
   process.exit(0)
 }
-

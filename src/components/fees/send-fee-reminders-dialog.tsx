@@ -217,11 +217,11 @@ export function SendFeeRemindersDialog({
                 </span>
               </div>
 
-              <div className="p-3 bg-rose-50 rounded-lg border border-rose-200">
-                <span className="text-xs text-rose-700 font-semibold block uppercase">
+              <div className="p-3 bg-[var(--attention-bg)] rounded-lg border border-[var(--attention)]/30">
+                <span className="text-xs text-[var(--attention-text)] font-semibold block uppercase">
                   Failed
                 </span>
-                <span className="text-2xl font-bold text-rose-800 mt-0.5 block">
+                <span className="text-2xl font-bold text-[var(--attention-text)] mt-0.5 block">
                   {result.failed}
                 </span>
               </div>
@@ -257,11 +257,11 @@ export function SendFeeRemindersDialog({
             {/* List of Failed Students */}
             {result.failed_students.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
-                  <XCircle className="size-4 text-rose-600" />
+                <span className="text-xs font-bold text-[var(--attention-text)] flex items-center gap-1.5">
+                  <XCircle className="size-4 text-[var(--attention-text)]" />
                   <span>Failed ({result.failed_students.length}):</span>
                 </span>
-                <div className="p-2.5 bg-rose-50/50 rounded-lg border border-rose-200 text-xs text-rose-900 max-h-32 overflow-y-auto">
+                <div className="p-2.5 bg-[var(--attention-bg)] rounded-lg border border-[var(--attention)]/30 text-xs text-[var(--attention-text)] max-h-32 overflow-y-auto">
                   {result.failed_students.map((err, idx) => (
                     <div key={idx} className="py-0.5">
                       • {err}
@@ -334,7 +334,7 @@ export function SendFeeRemindersDialog({
                             className={
                               r.reminder_number === 1
                                 ? 'bg-blue-100 text-blue-800 border-0 text-xs'
-                                : 'bg-rose-100 text-rose-800 border-0 text-xs'
+                                : 'bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 text-xs'
                             }
                           >
                             Reminder {r.reminder_number} of 2
@@ -346,7 +346,7 @@ export function SendFeeRemindersDialog({
                       </div>
 
                       <div className="text-right">
-                        <span className="font-bold text-rose-700 block">
+                        <span className="font-bold text-[var(--attention-text)] block">
                           {formatCurrency(r.balance)}
                         </span>
                         <span className="text-xs text-slate-400">Balance</span>

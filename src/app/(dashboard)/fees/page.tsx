@@ -525,10 +525,10 @@ export default function FeesPage() {
 
           {/* Overdue */}
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[var(--absent-text)] uppercase tracking-wider block">
+            <span className="text-xs font-bold text-[var(--attention-text)] uppercase tracking-wider block">
               Overdue Students
             </span>
-            <span className="text-2xl font-bold tracking-tight text-[var(--absent-text)] block">
+            <span className="text-2xl font-bold tracking-tight text-[var(--attention-text)] block">
               {viewAllMonths ? fees.filter((f) => f.status === 'overdue').length : monthStats.overdueCount} Overdue
             </span>
             <span className="text-xs text-[var(--text-secondary)] font-normal block">
@@ -542,7 +542,7 @@ export default function FeesPage() {
 
         {/* Zero Fee Records Hint */}
         {!loading && monthFees.length === 0 && !viewAllMonths && (
-          <div className="p-4 bg-[var(--warn-bg)] border border-[var(--warn)]/30 rounded-[16px] text-[var(--warn-text)] text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 bg-[var(--attention-bg)] border border-[var(--attention)]/30 rounded-[16px] text-[var(--attention-text)] text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <AlertCircle className="size-5 shrink-0" />
               <span>
@@ -618,8 +618,8 @@ export default function FeesPage() {
             onClick={() => setOverdueChipActive(!overdueChipActive)}
             className={`min-h-[38px] px-3.5 rounded-full font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
               overdueChipActive
-                ? 'bg-[var(--absent)] text-white shadow-xs'
-                : 'bg-white text-[var(--absent-text)] border border-[var(--absent)]/30 hover:border-[var(--absent)] shadow-2xs'
+                ? 'bg-[var(--attention)] text-white shadow-xs'
+                : 'bg-white text-[var(--attention-text)] border border-[var(--attention)]/30 hover:border-[var(--attention)] shadow-2xs'
             }`}
           >
             <AlertTriangle className="size-3.5" />
@@ -707,7 +707,7 @@ export default function FeesPage() {
                         {formatCurrency(fee.amount_due)}
                       </span>
                       <span className="text-[var(--text-secondary)] opacity-40">/</span>
-                      <span className={`font-bold ${fee.balance > 0 ? 'text-[var(--absent-text)]' : 'text-[var(--present-text)]'}`}>
+                      <span className={`font-bold ${fee.balance > 0 ? 'text-[var(--attention-text)]' : 'text-[var(--present-text)]'}`}>
                         {formatCurrency(fee.balance)}
                       </span>
                     </div>

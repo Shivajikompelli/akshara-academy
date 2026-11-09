@@ -39,7 +39,7 @@ export function StatusConfirmDialog({
             <div
               className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
                 isDeactivating
-                  ? 'bg-[var(--absent-bg)] text-[var(--absent-text)] border border-[var(--absent)]/30'
+                  ? 'bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30'
                   : 'bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30'
               }`}
             >
@@ -85,7 +85,7 @@ export function StatusConfirmDialog({
             onClick={onConfirm}
             className={`min-h-[44px] px-6 rounded-[12px] text-white font-bold text-sm cursor-pointer shadow-xs ${
               isDeactivating
-                ? 'bg-[var(--absent)] hover:bg-[var(--absent-text)]'
+                ? 'bg-[#9A4A00] hover:bg-[#853E00]'
                 : 'bg-[var(--present)] hover:bg-[var(--present-text)]'
             }`}
           >

@@ -128,8 +128,8 @@ function RecordPaymentForm({
       </DialogHeader>
 
       {errorMsg && (
-        <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-200 flex items-start gap-2">
-          <AlertCircle className="size-4 text-red-600 shrink-0 mt-0.5" />
+        <div className="p-3 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-lg border border-[var(--attention)]/30 flex items-start gap-2">
+          <AlertCircle className="size-4 text-[var(--attention-text)] shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -164,7 +164,7 @@ function RecordPaymentForm({
           </div>
           <div>
             <span className="text-slate-400 block text-xs">Balance</span>
-            <span className="font-bold text-rose-700">
+            <span className="font-bold text-[var(--attention-text)]">
               {formatCurrency(fee.balance)}
             </span>
           </div>

@@ -230,7 +230,7 @@ export function PaymentHistoryDialog({
           </DialogHeader>
 
           {errorMsg && (
-            <div className="p-3 bg-red-50 text-red-700 text-xs rounded-md border border-red-200 flex items-center gap-2">
+            <div className="p-3 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-md border border-[var(--attention)]/30 flex items-center gap-2">
               <AlertCircle className="size-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -263,7 +263,7 @@ export function PaymentHistoryDialog({
                 </div>
                 <div>
                   <span className="text-slate-400 block text-xs">Balance</span>
-                  <span className="font-extrabold text-rose-700">
+                  <span className="font-extrabold text-[var(--attention-text)]">
                     {formatCurrency(fee.balance)}
                   </span>
                 </div>
@@ -372,7 +372,7 @@ export function PaymentHistoryDialog({
                           variant="ghost"
                           size="icon"
                           onClick={() => setPaymentToDelete(p)}
-                          className="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                          className="size-8 text-slate-400 hover:text-[var(--attention-text)] hover:bg-[var(--attention-bg)] cursor-pointer"
                           title="Delete payment made by mistake"
                         >
                           <Trash2 className="size-4" />
@@ -429,7 +429,7 @@ export function PaymentHistoryDialog({
                         <div className="text-right">
                           <span
                             className={`font-bold block ${
-                              pastFee.balance > 0 ? 'text-rose-600' : 'text-emerald-700'
+                              pastFee.balance > 0 ? 'text-[var(--attention-text)]' : 'text-emerald-700'
                             }`}
                           >
                             {pastFee.balance > 0
@@ -469,7 +469,7 @@ export function PaymentHistoryDialog({
         >
           <DialogContent className="max-w-sm bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
             <DialogHeader>
-              <div className="flex items-center gap-2 text-[var(--absent-text)]">
+              <div className="flex items-center gap-2 text-[var(--attention-text)]">
                 <AlertTriangle className="size-5" />
                 <DialogTitle className="text-base font-bold text-[var(--text)]">
                   Delete Payment?
@@ -497,7 +497,7 @@ export function PaymentHistoryDialog({
                 type="button"
                 onClick={handleDeletePayment}
                 disabled={deletingPayment}
-                className="min-h-[44px] px-4 rounded-[12px] bg-[var(--absent)] hover:bg-[var(--absent-text)] text-white font-bold text-xs cursor-pointer shadow-xs"
+                className="min-h-[44px] px-4 rounded-[12px] bg-[#9A4A00] hover:bg-[#853E00] text-white font-bold text-xs cursor-pointer shadow-xs"
               >
                 {deletingPayment ? 'Deleting...' : 'Yes, Delete Payment'}
               </Button>

@@ -338,25 +338,25 @@ export default function HomePage() {
         </div>
       </AksharaCard>
 
-      {/* 2. OVERDUE FEES ALERT: Warning tint, count of overdue students, button to Fees page */}
+      {/* 2. OVERDUE FEES ALERT: Attention tint, count of overdue students, button to Fees page */}
       {!data.loading && data.overdueCount > 0 && (
-        <div className="rounded-[24px] p-5 sm:p-6 bg-[var(--warn-bg)] border border-[var(--warn)]/30 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-[24px] p-5 sm:p-6 bg-[var(--attention-bg)] border border-[var(--attention)]/30 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3.5">
-            <div className="size-11 rounded-[14px] bg-white border border-[var(--warn)]/30 flex items-center justify-center text-[var(--warn)] shrink-0 shadow-2xs">
+            <div className="size-11 rounded-[14px] bg-white border border-[var(--attention)]/30 flex items-center justify-center text-[var(--attention-text)] shrink-0 shadow-2xs">
               <AlertCircle className="size-6 stroke-[2.2]" />
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base text-[var(--warn-text)]">
+                <span className="font-bold text-base text-[var(--attention-text)]">
                   Overdue Fees Alert
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-[var(--warn)] text-white text-xs font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-[var(--attention-text)] text-white text-xs font-bold">
                   {data.overdueCount} {data.overdueCount === 1 ? 'student' : 'students'}
                 </span>
               </div>
               <p className="text-sm font-normal text-[var(--text-secondary)]">
                 Total outstanding overdue balance:{' '}
-                <strong className="text-[var(--warn-text)] font-bold">
+                <strong className="text-[var(--attention-text)] font-bold">
                   {formatCurrency(data.overdueBalance)}
                 </strong>
                 .
@@ -367,7 +367,7 @@ export default function HomePage() {
           <Link href="/fees" className="shrink-0">
             <button
               type="button"
-              className="min-h-[44px] px-5 rounded-[12px] bg-white text-[var(--warn-text)] border border-[var(--warn)]/40 hover:bg-[var(--warn-bg)] font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+              className="min-h-[44px] px-5 rounded-[12px] bg-white text-[var(--attention-text)] border border-[var(--attention)]/40 hover:bg-[var(--attention-bg)] font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
             >
               <span>View Overdue Fees</span>
               <ArrowRight className="size-4" />
@@ -419,7 +419,7 @@ export default function HomePage() {
                       {cls.presentCount} present · {cls.absentCount} absent
                     </p>
                   ) : (
-                    <p className="text-xs font-normal text-[var(--warn-text)]">
+                    <p className="text-xs font-normal text-[var(--attention-text)]">
                       Attendance not recorded yet for today
                     </p>
                   )}
@@ -433,7 +433,7 @@ export default function HomePage() {
                       <span>Taken {cls.takenTime || ''}</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--warn-bg)] text-[var(--warn-text)] border border-[var(--warn)]/20">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
                       <Clock className="size-3.5 stroke-[2.5]" />
                       <span>Not taken yet</span>
                     </span>

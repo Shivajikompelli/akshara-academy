@@ -455,14 +455,14 @@ export default function AttendancePage() {
     <div className="space-y-6 max-w-[960px] mx-auto pb-36">
       {/* Dry Run Banner (shown if function reports dry run mode) */}
       {alertResult?.dry_run && (
-        <div className="p-4 bg-[var(--warn-bg)] border border-[var(--warn)]/30 rounded-[16px] text-[var(--warn-text)] text-xs flex items-center justify-between">
+        <div className="p-4 bg-[var(--attention-bg)] border border-[var(--attention)]/30 rounded-[16px] text-[var(--attention-text)] text-xs flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Info className="size-4 shrink-0" />
             <span>
               <strong>Dry Run Mode active:</strong> WhatsApp messages are simulated and logged. No real messages are delivered to Meta.
             </span>
           </div>
-          <span className="bg-[var(--warn)]/20 text-[var(--warn-text)] font-bold text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+          <span className="bg-[var(--attention)]/20 text-[var(--attention-text)] font-bold text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">
             Dry Run
           </span>
         </div>
@@ -486,7 +486,7 @@ export default function AttendancePage() {
                 <span>Attendance taken {takenTime ? `(${takenTime})` : ''}</span>
               </div>
             ) : (
-              <div className="bg-[var(--warn-bg)] text-[var(--warn-text)] border border-[var(--warn)]/30 font-bold text-xs px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
+              <div className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
                 <Clock className="size-3.5" />
                 <span>Not taken yet</span>
               </div>
@@ -572,7 +572,7 @@ export default function AttendancePage() {
             <div className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
               <span className="text-[var(--present-text)]">Present {presentCount}</span>
               <span className="text-[var(--text-secondary)] opacity-60">·</span>
-              <span className={absentCount > 0 ? 'text-[var(--absent-text)] font-bold' : 'text-[var(--text-secondary)]'}>
+              <span className={absentCount > 0 ? 'text-[var(--attention-text)] font-bold' : 'text-[var(--text-secondary)]'}>
                 Absent {absentCount}
               </span>
               <span className="text-xs font-normal text-[var(--text-secondary)] ml-1">
@@ -653,7 +653,7 @@ export default function AttendancePage() {
                 onClick={() => toggleAttendance(student.id)}
                 className={`rounded-[16px] p-4 transition-all duration-150 select-none flex items-center justify-between gap-3 min-h-[64px] cursor-pointer ${
                   isAbsent
-                    ? 'bg-[var(--absent-bg)] shadow-2xs'
+                    ? 'bg-[var(--attention-row)] shadow-2xs'
                     : 'bg-white hover:bg-[var(--primary-soft)]/50 shadow-2xs'
                 }`}
               >
@@ -664,7 +664,7 @@ export default function AttendancePage() {
                     size="md"
                     className={
                       isAbsent
-                        ? 'bg-[var(--absent)]/15 text-[var(--absent-text)] border-[var(--absent)]/30'
+                        ? 'bg-[var(--attention)]/15 text-[var(--attention-text)] border-[var(--attention)]/30'
                         : ''
                     }
                   />
@@ -673,7 +673,7 @@ export default function AttendancePage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`text-base font-bold truncate ${
-                          isAbsent ? 'text-[var(--absent-text)]' : 'text-[var(--text)]'
+                          isAbsent ? 'text-[var(--attention-text)]' : 'text-[var(--text)]'
                         }`}
                       >
                         {student.full_name}
@@ -718,7 +718,7 @@ export default function AttendancePage() {
               <div className="flex items-center gap-2">
                 <span className="text-[var(--present-text)]">Present: {presentCount}</span>
                 <span className="text-[var(--text-secondary)] opacity-60">·</span>
-                <span className={absentCount > 0 ? 'text-[var(--absent-text)] font-bold' : 'text-[var(--text-secondary)]'}>
+                <span className={absentCount > 0 ? 'text-[var(--attention-text)] font-bold' : 'text-[var(--text-secondary)]'}>
                   Absent: {absentCount}
                 </span>
               </div>

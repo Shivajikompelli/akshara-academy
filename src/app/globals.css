@@ -20,20 +20,27 @@
   --color-present-bg: var(--present-bg);
   --color-present-text: var(--present-text);
 
-  --color-absent: var(--absent);
-  --color-absent-bg: var(--absent-bg);
-  --color-absent-text: var(--absent-text);
+  --color-attention: var(--attention);
+  --color-attention-bg: var(--attention-bg);
+  --color-attention-text: var(--attention-text);
+  --color-attention-row: var(--attention-row);
 
-  --color-warn: var(--warn);
-  --color-warn-bg: var(--warn-bg);
-  --color-warn-text: var(--warn-text);
+  --color-absent: var(--attention);
+  --color-absent-bg: var(--attention-bg);
+  --color-absent-text: var(--attention-text);
+
+  --color-warn: var(--attention);
+  --color-warn-bg: var(--attention-bg);
+  --color-warn-text: var(--attention-text);
 
   --color-whatsapp: var(--whatsapp);
   --color-whatsapp-bg: var(--whatsapp-bg);
   --color-whatsapp-text: var(--whatsapp-text);
 
-  /* Radius scale from profile */
+  /* Radius scale from bento profile */
+  --radius-tile: 24px;
   --radius-card: 24px;
+  --radius-button: 16px;
   --radius-control: 12px;
   --radius-squircle: 28px;
   --radius-pill: 9999px;
@@ -58,20 +65,28 @@
 
   --text: #1F2438;
   --text-secondary: #5A6378;   /* replaces #7E869B, which fails AA as small text */
-  --text-decor: #7E869B;       /* only for icons, dividers, text 18px or larger */
+  --text-decor: #7E869B;       /* only icons, dividers, text 18px or larger */
 
   --present: #10B981;
   --present-bg: #ECFDF5;
-  --present-text: #047857;
-  --absent: #EF4444;
-  --absent-bg: #FEF2F2;
-  --absent-text: #B42318;
-  --warn: #F59E0B;
-  --warn-bg: #FFFBEB;
-  --warn-text: #8A5300;
+  --present-text: #047857;   /* present, paid, collected */
+
+  --attention: #FDBA74;
+  --attention-bg: #FFF1E0;
+  --attention-text: #9A4A00; /* absent, overdue, pending, failed, errors */
+  --attention-row: #FFF8F0;  /* tint for an absent row inside a list */
+
   --whatsapp: #25D366;
   --whatsapp-bg: #E7F8E8;
   --whatsapp-text: #146C43;
+
+  /* Backward-compatible aliases for absent / warn mapped to attention */
+  --absent: var(--attention);
+  --absent-bg: var(--attention-bg);
+  --absent-text: var(--attention-text);
+  --warn: var(--attention);
+  --warn-bg: var(--attention-bg);
+  --warn-text: var(--attention-text);
 
   --radius: 12px;
 }
@@ -98,25 +113,14 @@
   --hero-gradient: linear-gradient(145deg, #0F766E, #14B8A6 60%, #2DD4BF);
 }
 
-[data-theme="peach"] {
-  --primary: #C2410C;
-  --primary-hover: #9A3412;
-  --primary-light: #FFEDD5;
-  --primary-soft: #FFF7ED;
-  --app-bg: #FFF9F5;
-  --card-border: #FFEDD5;
-  --hero-shadow: rgba(194, 65, 12, 0.25);
-  --hero-gradient: linear-gradient(145deg, #C2410C, #EA580C 60%, #F97316);
-}
-
 [data-theme="nordic"] {
-  --primary: #0369A1;
-  --primary-hover: #075985;
+  --primary: #0284C7;
+  --primary-hover: #0369A1;
   --primary-light: #E0F2FE;
   --primary-soft: #F0F9FF;
   --app-bg: #F4F9FD;
   --card-border: #BAE6FD;
-  --hero-shadow: rgba(3, 105, 161, 0.25);
+  --hero-shadow: rgba(2, 132, 199, 0.25);
   --hero-gradient: linear-gradient(145deg, #0369A1, #0284C7 60%, #38BDF8);
 }
 

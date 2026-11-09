@@ -223,18 +223,18 @@ export function StudentFormDialog({
         </DialogHeader>
 
         {formError && (
-          <div className="flex items-center gap-2 p-3.5 bg-[var(--absent-bg)] text-[var(--absent-text)] text-xs rounded-[12px] border border-[var(--absent)]/30">
+          <div className="flex items-center gap-2 p-3.5 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[12px] border border-[var(--attention)]/30">
             <AlertCircle className="size-4 shrink-0" />
             <span>{formError}</span>
           </div>
         )}
 
         {duplicateWarning && (
-          <div className="p-4 bg-[var(--warn-bg)] text-[var(--warn-text)] text-xs rounded-[14px] border border-[var(--warn)]/30 space-y-3">
+          <div className="p-4 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[14px] border border-[var(--attention)]/30 space-y-3">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="size-5 shrink-0 text-[var(--warn)] mt-0.5" />
+              <AlertTriangle className="size-5 shrink-0 text-[var(--attention-text)] mt-0.5" />
               <div>
-                <p className="font-bold text-[var(--warn-text)]">Duplicate Student Detected</p>
+                <p className="font-bold text-[var(--attention-text)]">Duplicate Student Detected</p>
                 <p className="text-[var(--text-secondary)] text-xs mt-0.5">{duplicateWarning}</p>
               </div>
             </div>
@@ -424,7 +424,7 @@ export function StudentFormDialog({
                   />
                 </div>
                 {phoneError ? (
-                  <p className="text-xs text-[var(--absent-text)] font-bold">{phoneError}</p>
+                  <p className="text-xs text-[var(--attention-text)] font-bold">{phoneError}</p>
                 ) : (
                   <p className="text-xs text-[var(--text-secondary)]">
                     Enter 10-digit mobile number (starts with 6, 7, 8, or 9).

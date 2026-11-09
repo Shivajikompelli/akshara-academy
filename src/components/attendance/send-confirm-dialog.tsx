@@ -75,10 +75,10 @@ export function SendConfirmDialog({
 
           {/* Skipped Students List (No consent) */}
           {skipped.length > 0 && (
-            <div className="p-4 rounded-[16px] bg-[var(--warn-bg)] border border-[var(--warn)]/30 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-[var(--warn-text)]">
+            <div className="p-4 rounded-[16px] bg-[var(--attention-bg)] border border-[var(--attention)]/30 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--attention-text)]">
                 <span className="flex items-center gap-1.5">
-                  <AlertCircle className="size-4 text-[var(--warn)]" />
+                  <AlertCircle className="size-4 text-[var(--attention-text)]" />
                   <span>
                     {skipped.length} student{skipped.length === 1 ? '' : 's'} skipped (no WhatsApp consent):
                   </span>
