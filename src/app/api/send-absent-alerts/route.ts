@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       .filter((s) => !s.whatsapp_opt_in)
       .map((s) => s.full_name)
 
-    const isDryRun = process.env.WHATSAPP_DRY_RUN !== 'false'
+    const isDryRun = process.env.WHATSAPP_DRY_RUN === 'true' || !process.env.WHATSAPP_TOKEN
     const graphApiVersion = process.env.WHATSAPP_GRAPH_API_VERSION || 'v21.0'
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || ''
     const token = process.env.WHATSAPP_TOKEN || ''

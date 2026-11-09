@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
     if (!unpaidFees || unpaidFees.length === 0) {
       return NextResponse.json({
-        dry_run: process.env.WHATSAPP_DRY_RUN !== 'false',
+        dry_run: process.env.WHATSAPP_DRY_RUN === 'true' || !process.env.WHATSAPP_TOKEN,
         sent: 0,
         failed: 0,
         already_sent: 0,
@@ -278,8 +278,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 8. Handle DRY PREVIEW request
+    const isDryRun = process.env.WHATSAPP_DRY_RUN === 'true' || !process.env.WHATSAPP_TOKEN
+
     if (dryPreview) {
-      const isDryRun = process.env.WHATSAPP_DRY_RUN !== 'false'
       return NextResponse.json({
         dry_run: isDryRun,
         preview_recipients: eligibleQueue.map((item) => ({
@@ -299,7 +300,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 9. Send WhatsApp Reminders
-    const isDryRun = process.env.WHATSAPP_DRY_RUN !== 'false'
     const graphApiVersion = process.env.WHATSAPP_GRAPH_API_VERSION || 'v21.0'
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || ''
     const waToken = process.env.WHATSAPP_TOKEN || ''
