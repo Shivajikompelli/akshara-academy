@@ -698,7 +698,7 @@ export default function FeesPage() {
                 {/* Middle: Amount, Balance & Due Date */}
                 <div className="flex items-center justify-between sm:justify-start gap-6 text-sm md:w-1/3">
                   <div>
-                    <span className="text-xs font-normal text-[var(--text-secondary)] block">Due / Balance</span>
+                    <span className="text-xs font-normal text-[var(--text-secondary)] block">Due</span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="font-semibold text-[var(--text)]">
                         {formatCurrency(fee.amount_due)}

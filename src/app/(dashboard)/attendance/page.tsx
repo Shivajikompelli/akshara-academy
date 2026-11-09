@@ -691,11 +691,6 @@ export default function AttendancePage() {
                       >
                         {student.full_name}
                       </span>
-                      {student.admission_no && (
-                        <span className="text-xs font-normal text-[var(--text-secondary)] bg-[var(--primary-soft)] px-2 py-0.5 rounded-full shrink-0">
-                          #{student.admission_no}
-                        </span>
-                      )}
                     </div>
 
                     <div className="text-sm font-normal text-[var(--text-secondary)] mt-0.5 truncate flex items-center gap-1.5">

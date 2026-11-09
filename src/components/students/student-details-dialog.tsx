@@ -72,11 +72,6 @@ export function StudentDetailsDialog({
               <h2 className="text-xl font-bold tracking-tight text-[var(--text)]">
                 {student.full_name}
               </h2>
-              {student.admission_no && (
-                <span className="text-xs font-semibold text-[var(--text-secondary)] bg-white px-2 py-0.5 rounded-full border border-[var(--card-border)] shadow-2xs">
-                  #{student.admission_no}
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="font-semibold text-sm text-[var(--text)]">
@@ -121,9 +116,9 @@ export function StudentDetailsDialog({
                 </span>
               </div>
               <div>
-                <span className="text-xs text-[var(--text-secondary)] block">Admission No</span>
-                <span className="font-semibold text-[var(--text)]">
-                  {student.admission_no || 'None'}
+                <span className="text-xs text-[var(--text-secondary)] block">Status</span>
+                <span className="font-semibold text-[var(--text)] capitalize">
+                  {student.status}
                 </span>
               </div>
             </div>
