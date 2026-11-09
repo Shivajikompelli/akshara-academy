@@ -141,3 +141,16 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Completely hide Next.js dev indicator ("N" logo), dev tools toolbar, and rendering animation overlays */
+nextjs-portal,
+[data-nextjs-dev-indicator],
+[data-nextjs-toast],
+[data-nextjs-dialog-overlay],
+#nextjs-dev-indicator,
+next-route-announcer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
