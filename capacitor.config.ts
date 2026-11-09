@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Akshara Academy',
   webDir: 'public',
   server: {
-    url: 'https://akshara-academy.vercel.app',
+    url: 'https://akshara-academy-eta.vercel.app',
     cleartext: false,
   },
 };
