@@ -470,20 +470,22 @@ export default function AttendancePage() {
 
       {/* 1. TOP CONTROLS & HEADER */}
       <div className="bg-white p-4 sm:p-5 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Attendance</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)] truncate">
+              Attendance
+            </h1>
           </div>
 
           {/* Status Badge: Attendance taken or Not taken yet */}
-          <div>
+          <div className="shrink-0">
             {isTaken ? (
-              <div className="bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30 font-bold text-xs px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
+              <div className="bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30 font-bold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
                 <Check className="size-3.5 stroke-[2.5]" />
-                <span>Attendance taken {takenTime ? `(${takenTime})` : ''}</span>
+                <span>Taken {takenTime ? `(${takenTime})` : ''}</span>
               </div>
             ) : (
-              <div className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
+              <div className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
                 <Clock className="size-3.5" />
                 <span>Not taken yet</span>
               </div>
@@ -709,8 +711,8 @@ export default function AttendancePage() {
 
       {/* 3. STICKY BOTTOM BAR: One primary element (solid purple), secondary (outline) */}
       {attendanceList.length > 0 && (
-        <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 lg:left-64 z-30 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/70 p-4 shadow-lg">
-          <div className="max-w-[960px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/70 p-3.5 sm:p-4 shadow-lg">
+          <div className="max-w-[1100px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="text-sm font-bold text-[var(--text)]">
               <div className="flex items-center gap-2">
                 <span className="text-[var(--present-text)]">Present: {presentCount}</span>
@@ -724,16 +726,16 @@ export default function AttendancePage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               {/* Secondary Action: Save attendance (outline) */}
               <button
                 type="button"
                 onClick={handleSaveAttendanceOnly}
                 disabled={saving || sendingAlerts || loading}
-                className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-3.5 sm:px-5 rounded-[12px] font-bold text-xs sm:text-sm border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
                 <Save className="size-4" />
-                <span>{saving ? 'Saving...' : 'Save attendance'}</span>
+                <span>{saving ? 'Saving...' : 'Save only'}</span>
               </button>
 
               {/* One Primary Element: Save and notify absentees (solid purple) */}
@@ -741,7 +743,7 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleInitiateSaveAndNotify}
                 disabled={absentCount === 0 || saving || sendingAlerts || loading}
-                className="min-h-[44px] px-6 rounded-[12px] font-bold text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-4 sm:px-6 rounded-[12px] font-bold text-xs sm:text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
                 <Send className="size-4" />
                 <span>{sendingAlerts ? 'Processing...' : 'Save and notify absentees'}</span>

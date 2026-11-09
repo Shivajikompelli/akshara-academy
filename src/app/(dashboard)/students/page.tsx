@@ -17,6 +17,7 @@ import {
   Users,
   RefreshCw,
   Building,
+  ChevronDown,
 } from 'lucide-react'
 import { formatDate } from '@/lib/formatters'
 import { CLASS_OPTIONS, type Student } from '@/types/database'
@@ -179,25 +180,23 @@ export default function StudentsPage() {
   return (
     <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER: Single primary button "Add student" */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
-              Students
-            </h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30">
-              {activeCount} Active
-            </span>
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)] truncate">
+            Students
+          </h1>
+          <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30 shrink-0">
+            {activeCount} Active
+          </span>
         </div>
 
         {/* Single Primary Button */}
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="min-h-[44px] px-5 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg cursor-pointer transition-all active:scale-[0.98] self-start sm:self-auto"
+          className="min-h-[40px] sm:min-h-[44px] px-3.5 sm:px-5 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer transition-all active:scale-[0.98] shrink-0"
         >
-          <Plus className="size-4.5 stroke-[2.5]" />
+          <Plus className="size-4 stroke-[2.5]" />
           <span>Add student</span>
         </button>
       </div>
@@ -215,63 +214,55 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* 2. SEARCH AT THE TOP & FILTERS AS DROPDOWNS */}
-      <div className="space-y-3">
+      {/* 2. SEARCH & FILTERS AS RESPONSIVE 2-COLUMN DROPDOWNS */}
+      <div className="space-y-2.5">
         {/* Search input at the top */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)]" />
           <input
             type="text"
-            placeholder="Search by student name, school, parent, or phone..."
+            placeholder="Search student, school, parent, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
+            className="w-full h-11 sm:h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
 
-        {/* Filters as Dropdowns */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        {/* Filters: 2-column grid on mobile, flex on desktop */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-start w-full">
           {/* Status filter dropdown */}
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="student-status-filter"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
-            >
-              Status:
-            </label>
+          <div className="relative w-full sm:w-52">
             <select
               id="student-status-filter"
+              aria-label="Filter by Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
+              className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
-              <option value="active">Active ({activeCount})</option>
-              <option value="inactive">Inactive ({inactiveCount})</option>
-              <option value="all">All ({students.length})</option>
+              <option value="active">Status: Active ({activeCount})</option>
+              <option value="inactive">Status: Inactive ({inactiveCount})</option>
+              <option value="all">Status: All ({students.length})</option>
             </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
           </div>
 
           {/* Class filter dropdown */}
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="class-filter"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
-            >
-              Class:
-            </label>
+          <div className="relative w-full sm:w-52">
             <select
               id="class-filter"
+              aria-label="Filter by Class"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
+              className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
-              <option value="all">All Classes</option>
+              <option value="all">Class: All Classes</option>
               {CLASS_OPTIONS.map((cls) => (
                 <option key={cls} value={cls}>
-                  {cls}
+                  Class: {cls}
                 </option>
               ))}
             </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
           </div>
         </div>
       </div>

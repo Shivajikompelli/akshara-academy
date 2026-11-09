@@ -21,6 +21,7 @@ import {
   Search,
   AlertTriangle,
   Info,
+  ChevronDown,
 } from 'lucide-react'
 import { formatDate, formatPeriod } from '@/lib/formatters'
 import { toast } from 'sonner'
@@ -270,28 +271,26 @@ export default function MessageLogPage() {
   return (
     <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER (Clean, unboxed) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
-              Message Log
-            </h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--card-border)]/60">
-              {logs.length} Total
-            </span>
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)] truncate">
+            Message Log
+          </h1>
+          <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-bold bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--card-border)]/60 shrink-0">
+            {logs.length} Total
+          </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           {failedCountInView > 0 && (
             <button
               type="button"
               onClick={handleRetryAllFailed}
               disabled={retryingAll || loading}
-              className="min-h-[44px] px-5 rounded-[16px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+              className="min-h-[40px] sm:min-h-[44px] px-3 sm:px-4 rounded-[12px] border-2 border-[var(--attention-text)] text-[var(--attention-text)] bg-white hover:bg-[var(--attention-bg)] font-bold text-xs sm:text-sm flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
             >
-              <RotateCcw className={`size-4 ${retryingAll ? 'animate-spin' : ''}`} />
-              <span>{retryingAll ? 'Retrying...' : `Retry all failed (${failedCountInView})`}</span>
+              <RotateCcw className={`size-3.5 ${retryingAll ? 'animate-spin' : ''}`} />
+              <span>Retry failed ({failedCountInView})</span>
             </button>
           )}
 
@@ -299,7 +298,7 @@ export default function MessageLogPage() {
             type="button"
             onClick={fetchLogs}
             disabled={loading}
-            className="size-11 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] flex items-center justify-center cursor-pointer transition-colors"
+            className="size-10 sm:size-11 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] flex items-center justify-center cursor-pointer transition-colors"
             title="Refresh logs"
           >
             <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
@@ -308,7 +307,7 @@ export default function MessageLogPage() {
       </div>
 
       {/* 2. FILTER DROPDOWNS & Search */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {/* Search Input */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)]" />
@@ -317,51 +316,43 @@ export default function MessageLogPage() {
             placeholder="Search by student name or parent phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
+            className="w-full h-11 sm:h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
 
-        {/* Filter Dropdowns row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        {/* Filter Dropdowns row: 2-column grid on mobile */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-start w-full">
           {/* Kind filter dropdown */}
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="messages-type-filter"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
-            >
-              Type:
-            </label>
+          <div className="relative w-full sm:w-52">
             <select
               id="messages-type-filter"
+              aria-label="Filter by Type"
               value={kindFilter}
               onChange={(e) => setKindFilter(e.target.value as 'all' | 'absent_alert' | 'fee_reminder')}
-              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
+              className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
-              <option value="all">All Types ({logs.length})</option>
-              <option value="absent_alert">Absent Alerts ({logs.filter((l) => l.kind === 'absent_alert').length})</option>
-              <option value="fee_reminder">Fee Reminders ({logs.filter((l) => l.kind === 'fee_reminder').length})</option>
+              <option value="all">Type: All ({logs.length})</option>
+              <option value="absent_alert">Type: Absent Alerts ({logs.filter((l) => l.kind === 'absent_alert').length})</option>
+              <option value="fee_reminder">Type: Fee Reminders ({logs.filter((l) => l.kind === 'fee_reminder').length})</option>
             </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
           </div>
 
           {/* Status filter dropdown */}
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="messages-status-filter"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
-            >
-              Status:
-            </label>
+          <div className="relative w-full sm:w-52">
             <select
               id="messages-status-filter"
+              aria-label="Filter by Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'sent' | 'failed' | 'queued')}
-              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
+              className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
-              <option value="all">All Statuses ({logs.length})</option>
-              <option value="sent">Sent ({logs.filter((l) => l.status === 'sent').length})</option>
-              <option value="failed">Failed ({logs.filter((l) => l.status === 'failed').length})</option>
-              <option value="queued">Queued ({logs.filter((l) => l.status === 'queued').length})</option>
+              <option value="all">Status: All ({logs.length})</option>
+              <option value="sent">Status: Sent ({logs.filter((l) => l.status === 'sent').length})</option>
+              <option value="failed">Status: Failed ({logs.filter((l) => l.status === 'failed').length})</option>
+              <option value="queued">Status: Queued ({logs.filter((l) => l.status === 'queued').length})</option>
             </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
           </div>
         </div>
       </div>

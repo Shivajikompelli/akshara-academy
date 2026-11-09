@@ -416,19 +416,19 @@ export default function FeesPage() {
   return (
     <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER (Clean, unboxed) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)] truncate">
             Fees Dashboard
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={fetchFeesData}
             disabled={loading}
-            className="size-11 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] flex items-center justify-center cursor-pointer transition-colors"
+            className="size-10 sm:size-11 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
             title="Refresh fees"
           >
             <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
@@ -439,7 +439,7 @@ export default function FeesPage() {
             <button
               type="button"
               onClick={() => setActionsMenuOpen((v) => !v)}
-              className="min-h-[44px] px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
+              className="min-h-[40px] sm:min-h-[44px] px-3 sm:px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-xs transition-colors shrink-0"
             >
               <span>Fee Actions</span>
               <ChevronDown className={`size-4 transition-transform ${actionsMenuOpen ? 'rotate-180' : ''}`} />
@@ -591,60 +591,67 @@ export default function FeesPage() {
         )}
       </div>
 
-      {/* 3. TABS & FILTER BAR (Clean strip, no nested box) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-        {/* Status Dropdown */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="fees-status-filter" className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0">
-            Status:
-          </label>
-          <select
-            id="fees-status-filter"
-            value={overdueChipActive ? 'overdue' : statusTab}
-            onChange={(e) => {
-              const val = e.target.value
-              if (val === 'overdue') {
-                setOverdueChipActive(true)
-                setStatusTab('all')
-              } else {
-                setOverdueChipActive(false)
-                setStatusTab(val as 'all' | 'pending' | 'paid')
-              }
-            }}
-            className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
-          >
-            <option value="all">All Statuses ({fees.length})</option>
-            <option value="pending">Pending ({fees.filter((f) => f.status !== 'paid').length})</option>
-            <option value="paid">Paid ({fees.filter((f) => f.status === 'paid').length})</option>
-            <option value="overdue">Overdue ({fees.filter((f) => f.status === 'overdue').length})</option>
-          </select>
-        </div>
-
-        {/* Search & Class Dropdown */}
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex-1 sm:w-64">
+      {/* 3. SEARCH & FILTERS: 2-column dropdowns on mobile, flex on desktop */}
+      <div className="space-y-2.5 pt-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Search */}
+          <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               placeholder="Search student or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
+              className="w-full h-11 pl-9 pr-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
             />
           </div>
 
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="h-10 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-xs font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-2xs"
-          >
-            <option value="all">All Classes</option>
-            {CLASS_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          {/* 2-Column Dropdowns on mobile, flex on desktop */}
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+            {/* Status Dropdown */}
+            <div className="relative w-full sm:w-48">
+              <select
+                id="fees-status-filter"
+                aria-label="Filter by Status"
+                value={overdueChipActive ? 'overdue' : statusTab}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === 'overdue') {
+                    setOverdueChipActive(true)
+                    setStatusTab('all')
+                  } else {
+                    setOverdueChipActive(false)
+                    setStatusTab(val as 'all' | 'pending' | 'paid')
+                  }
+                }}
+                className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
+              >
+                <option value="all">Status: All ({fees.length})</option>
+                <option value="pending">Status: Pending ({fees.filter((f) => f.status !== 'paid').length})</option>
+                <option value="paid">Status: Paid ({fees.filter((f) => f.status === 'paid').length})</option>
+                <option value="overdue">Status: Overdue ({fees.filter((f) => f.status === 'overdue').length})</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
+            </div>
+
+            {/* Class Dropdown */}
+            <div className="relative w-full sm:w-44">
+              <select
+                value={classFilter}
+                aria-label="Filter by Class"
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
+              >
+                <option value="all">Class: All Classes</option>
+                {CLASS_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    Class: {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
+            </div>
+          </div>
         </div>
       </div>
 

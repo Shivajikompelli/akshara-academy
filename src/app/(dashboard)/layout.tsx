@@ -13,8 +13,8 @@ export default function DashboardLayout({
       {/* Mobile Top Header (< 768px) with Page/Brand title and 44px Avatar */}
       <MobileTopHeader />
 
-      {/* Main Content Area in a container with max-width 1100px and tightened padding */}
-      <main className="flex-1 w-full max-w-[1100px] mx-auto px-3 sm:px-4 py-4 pb-20 md:pb-8">
+      {/* Main Content Area in a container with max-width 1100px and responsive padding */}
+      <main className="flex-1 w-full max-w-[1100px] mx-auto px-3 sm:px-4 py-4 pb-28 md:pb-8">
         {children}
       </main>
 
