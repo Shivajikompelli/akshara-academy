@@ -237,102 +237,102 @@ export default function HomePage() {
       </div>
 
       {/* 1. HERO CARD with purple gradient: today's date, three numbers, two actions */}
-      <AksharaCard variant="hero" className="p-5 sm:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-white/80 uppercase tracking-widest block">
+      <AksharaCard variant="hero" className="p-4 sm:p-5 max-w-[760px]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest block">
               {formattedToday || 'Today'}
             </span>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+            <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
               Daily Attendance & Fees
             </h2>
           </div>
 
-          {/* Two Actions: "Take attendance" and "Send fee reminders" */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Link href="/attendance">
+          {/* Two Actions: "Take attendance" and "Send fee reminders" beside each other */}
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+            <Link href="/attendance" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="min-h-[44px] px-4.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-sm flex items-center gap-2 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                className="w-full min-h-[40px] px-3.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
               >
                 <CalendarCheck className="size-4 stroke-[2.5]" />
-                <span>Take attendance</span>
+                <span className="truncate">Take attendance</span>
               </button>
             </Link>
 
-            <Link href="/fees">
+            <Link href="/fees" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="min-h-[44px] px-4.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-sm flex items-center gap-2 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
+                className="w-full min-h-[40px] px-3.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
               >
                 <BellRing className="size-4" />
-                <span>Send fee reminders</span>
+                <span className="truncate">Fee reminders</span>
               </button>
             </Link>
           </div>
         </div>
 
-        {/* Three Numbers: Enrolled / Present / Absent (show 'Not taken yet' if not taken) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-6 pt-5 border-t border-white/20">
-          <div className="bg-white/10 sm:bg-transparent rounded-[16px] p-4 sm:p-0">
-            <span className="text-xs font-medium text-white/80 block uppercase tracking-wider">
+        {/* Three Numbers Beside Each Other in a 3-column row */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3.5 pt-3 border-t border-white/20">
+          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
               Enrolled
             </span>
-            <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
               {data.loading ? '—' : data.enrolledCount}
             </span>
-            <span className="text-xs text-white/70 font-normal mt-0.5 block">
+            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
               Active students
             </span>
           </div>
 
-          <div className="bg-white/10 sm:bg-transparent rounded-[16px] p-4 sm:p-0">
-            <span className="text-xs font-medium text-white/80 block uppercase tracking-wider">
-              Present Today
+          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
+              Present
             </span>
             {data.loading ? (
-              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
                 —
               </span>
             ) : attendanceTakenToday ? (
-              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
                 {data.presentCount}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30">
-                <Clock className="size-3.5" />
-                <span>Not taken yet</span>
+              <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
+                <Clock className="size-3 shrink-0" />
+                <span>Not taken</span>
               </span>
             )}
-            <span className="text-xs text-white/70 font-normal mt-0.5 block">
-              {attendanceTakenToday ? 'Marked present' : 'Awaiting today\'s check-in'}
+            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
+              {attendanceTakenToday ? 'Marked present' : 'Awaiting check-in'}
             </span>
           </div>
 
-          <div className="bg-white/10 sm:bg-transparent rounded-[16px] p-4 sm:p-0">
-            <span className="text-xs font-medium text-white/80 block uppercase tracking-wider">
-              Absent Today
+          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
+              Absent
             </span>
             {data.loading ? (
-              <span className="text-2xl font-bold tracking-tight text-white mt-1 block">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
                 —
               </span>
             ) : attendanceTakenToday ? (
               <span
-                className={`text-2xl font-bold tracking-tight mt-1 block ${
+                className={`text-xl sm:text-2xl font-bold tracking-tight mt-0.5 block ${
                   data.absentCount > 0 ? 'text-amber-200' : 'text-white'
                 }`}
               >
                 {data.absentCount}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30">
-                <Clock className="size-3.5" />
-                <span>Not taken yet</span>
+              <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
+                <Clock className="size-3 shrink-0" />
+                <span>Not taken</span>
               </span>
             )}
-            <span className="text-xs text-white/70 font-normal mt-0.5 block">
-              {attendanceTakenToday ? 'Marked absent' : 'Awaiting today\'s check-in'}
+            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
+              {attendanceTakenToday ? 'Marked absent' : 'Awaiting check-in'}
             </span>
           </div>
         </div>

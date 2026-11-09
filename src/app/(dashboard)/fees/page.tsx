@@ -480,22 +480,22 @@ export default function FeesPage() {
       </div>
 
       {/* 2. SUMMARY CARD: Collected vs Outstanding for the month, in large type */}
-      <div className="bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-4">
+      <div className="bg-white p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-3.5 max-w-[760px]">
         {/* Month Navigation Strip */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => adjustMonth(-1)}
-              className="size-10 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer transition-colors"
+              className="size-9 sm:size-10 rounded-[10px] sm:rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
               title="Previous Month"
             >
-              <ChevronLeft className="size-4.5" />
+              <ChevronLeft className="size-4" />
             </button>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[12px] bg-[var(--primary-soft)]/50 border border-[var(--card-border)]/60">
-              <Calendar className="size-4 text-[var(--primary)] shrink-0" />
-              <span className="font-bold text-sm text-[var(--text)]">
+            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-[10px] sm:rounded-[12px] bg-[var(--primary-soft)]/50 border border-[var(--card-border)]/60">
+              <Calendar className="size-3.5 sm:size-4 text-[var(--primary)] shrink-0" />
+              <span className="font-bold text-xs sm:text-sm text-[var(--text)] whitespace-nowrap">
                 {selectedMonth ? formatPeriod(`${selectedMonth}-01`) : 'Select Month'}
               </span>
             </div>
@@ -503,69 +503,66 @@ export default function FeesPage() {
             <button
               type="button"
               onClick={() => adjustMonth(1)}
-              className="size-10 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer transition-colors"
+              className="size-9 sm:size-10 rounded-[10px] sm:rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
               title="Next Month"
             >
-              <ChevronRight className="size-4.5" />
+              <ChevronRight className="size-4" />
             </button>
           </div>
 
-          <div>
+          <div className="shrink-0">
             <button
               type="button"
               onClick={() => setViewAllMonths(!viewAllMonths)}
-              className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
+              className={`text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer ${
                 viewAllMonths
                   ? 'bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--primary)]/30'
                   : 'bg-white text-[var(--text-secondary)] border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
-              {viewAllMonths ? 'Showing All Months' : 'Showing Selected Month'}
+              {viewAllMonths ? 'All Months' : 'Selected Month'}
             </button>
           </div>
         </div>
 
-        {/* Collected vs Outstanding in Large Type */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+        {/* 3 Metrics Beside Each Other in a 3-column row */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3.5 pt-3 border-t border-[var(--card-border)]/50">
           {/* Collected */}
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[var(--present-text)] uppercase tracking-wider block">
+          <div className="bg-[var(--present-bg)]/50 rounded-[14px] p-2 sm:p-3 space-y-0.5 border border-[var(--present)]/20">
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--present-text)] uppercase tracking-wider block truncate">
               Collected
             </span>
-            <span className="text-2xl font-bold tracking-tight text-[var(--present-text)] block">
+            <span className="text-base sm:text-2xl font-bold tracking-tight text-[var(--present-text)] block truncate">
               {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_paid, 0) : monthStats.totalPaid)}
             </span>
-            <span className="text-xs text-[var(--text-secondary)] font-normal block">
-              Received {viewAllMonths ? 'all time' : `for ${selectedMonth ? formatPeriod(`${selectedMonth}-01`) : 'month'}`}
+            <span className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-normal block truncate">
+              Received {viewAllMonths ? 'all time' : 'this month'}
             </span>
           </div>
 
           {/* Outstanding */}
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+          <div className="bg-slate-50 rounded-[14px] p-2 sm:p-3 space-y-0.5 border border-[var(--card-border)]">
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider block truncate">
               Outstanding
             </span>
-            <span className="text-2xl font-bold tracking-tight text-[var(--text)] block">
+            <span className="text-base sm:text-2xl font-bold tracking-tight text-[var(--text)] block truncate">
               {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.balance, 0) : monthStats.totalBalance)}
             </span>
-            <span className="text-xs text-[var(--text-secondary)] font-normal block">
+            <span className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-normal block truncate">
               Uncollected balance
             </span>
           </div>
 
           {/* Overdue */}
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[var(--attention-text)] uppercase tracking-wider block">
-              Overdue Students
+          <div className="bg-[var(--attention-bg)]/60 rounded-[14px] p-2 sm:p-3 space-y-0.5 border border-[var(--attention)]/30">
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--attention-text)] uppercase tracking-wider block truncate">
+              Overdue
             </span>
-            <span className="text-2xl font-bold tracking-tight text-[var(--attention-text)] block">
+            <span className="text-base sm:text-2xl font-bold tracking-tight text-[var(--attention-text)] block truncate">
               {viewAllMonths ? fees.filter((f) => f.status === 'overdue').length : monthStats.overdueCount} Overdue
             </span>
-            <span className="text-xs text-[var(--text-secondary)] font-normal block">
-              Total Billed:{' '}
-              <strong className="text-[var(--text)]">
-                {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_due, 0) : monthStats.totalDue)}
-              </strong>
+            <span className="text-[10px] sm:text-xs text-[var(--attention-text)] font-normal block truncate">
+              Billed: {formatCurrency(viewAllMonths ? fees.reduce((a, b) => a + b.amount_due, 0) : monthStats.totalDue)}
             </span>
           </div>
         </div>

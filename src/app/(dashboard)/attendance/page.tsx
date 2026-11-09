@@ -19,6 +19,7 @@ import {
   Building,
   Send,
   Info,
+  ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SendConfirmDialog } from '@/components/attendance/send-confirm-dialog'
@@ -469,7 +470,7 @@ export default function AttendancePage() {
       )}
 
       {/* 1. TOP CONTROLS & HEADER */}
-      <div className="bg-white p-4 sm:p-5 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-4">
+      <div className="bg-white p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-3.5 max-w-[760px]">
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text)] truncate">
@@ -493,62 +494,69 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* Class Dropdown & Date Picker */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 pt-2 border-t border-[var(--card-border)]/50">
-          {/* Class Dropdown */}
-          <div className="sm:col-span-5 space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Class</label>
-            {availableClasses.length > 0 ? (
-              <select
-                value={selectedClass}
-                onChange={(e) => handleClassChange(e.target.value)}
-                className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
-              >
-                {availableClasses.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-[var(--primary-soft)] flex items-center text-sm font-normal text-[var(--text-secondary)]">
-                No classes with active students
-              </div>
-            )}
+        {/* Class Dropdown & Date Picker Beside Each Other in a 2-column row */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-3 border-t border-[var(--card-border)]/50">
+          {/* Class Dropdown (Left) */}
+          <div className="space-y-1">
+            <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
+              Class
+            </label>
+            <div className="relative">
+              {availableClasses.length > 0 ? (
+                <select
+                  value={selectedClass}
+                  onChange={(e) => handleClassChange(e.target.value)}
+                  className="w-full h-11 pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer appearance-none truncate"
+                >
+                  {availableClasses.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="h-11 px-3 rounded-[12px] border border-[var(--card-border)] bg-[var(--primary-soft)] flex items-center text-xs text-[var(--text-secondary)] truncate">
+                  No active classes
+                </div>
+              )}
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
+            </div>
           </div>
 
-          {/* Date Picker (allow past, block future) */}
-          <div className="sm:col-span-7 space-y-1.5">
+          {/* Date Picker Beside Class (Right) */}
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Date</label>
+              <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                Date
+              </label>
               {!isToday && todayStr && (
                 <button
                   type="button"
                   onClick={() => handleDateChange(todayStr)}
-                  className="text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[var(--primary)] hover:underline cursor-pointer"
                 >
                   Today
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => adjustDate(-1)}
-                className="size-12 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                className="size-11 rounded-[10px] sm:rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer shrink-0 transition-colors"
                 title="Previous Day"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft className="size-4" />
               </button>
 
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <input
                   type="date"
                   value={selectedDate}
                   max={todayStr}
                   onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-normal text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
+                  className="w-full h-11 px-2 text-xs sm:text-sm font-normal text-[var(--text)] rounded-[10px] sm:rounded-[12px] border border-[var(--card-border)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer truncate"
                 />
               </div>
 
@@ -556,26 +564,26 @@ export default function AttendancePage() {
                 type="button"
                 disabled={isToday}
                 onClick={() => adjustDate(1)}
-                className="size-12 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer shrink-0 disabled:opacity-40 transition-colors"
+                className="size-11 rounded-[10px] sm:rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center justify-center cursor-pointer shrink-0 disabled:opacity-40 transition-colors"
                 title="Next Day"
               >
-                <ChevronRight className="size-5" />
+                <ChevronRight className="size-4" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Status line: "Present 22 · Absent 3" and "Mark all present" tertiary link */}
+        {/* Status line: "Present 22 · Absent 3" and "Mark all present" beside each other */}
         {availableClasses.length > 0 && attendanceList.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[var(--card-border)]/50">
-            <div className="text-sm font-bold text-[var(--text)] flex items-center gap-2">
-              <span className="text-[var(--present-text)]">Present {presentCount}</span>
+          <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-[var(--card-border)]/50">
+            <div className="text-xs sm:text-sm font-bold text-[var(--text)] flex items-center gap-1.5 sm:gap-2 truncate">
+              <span className="text-[var(--present-text)]">Present: {presentCount}</span>
               <span className="text-[var(--text-secondary)] opacity-60">·</span>
               <span className={absentCount > 0 ? 'text-[var(--attention-text)] font-bold' : 'text-[var(--text-secondary)]'}>
-                Absent {absentCount}
+                Absent: {absentCount}
               </span>
-              <span className="text-xs font-normal text-[var(--text-secondary)] ml-1">
-                ({visibleStudents.length} of {attendanceList.length} students)
+              <span className="text-[11px] font-normal text-[var(--text-secondary)] hidden sm:inline">
+                ({visibleStudents.length} students)
               </span>
             </div>
 
@@ -583,9 +591,9 @@ export default function AttendancePage() {
               type="button"
               onClick={handleMarkAllPresent}
               disabled={loading || saving || sendingAlerts}
-              className="text-sm font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-opacity"
+              className="text-xs font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-opacity shrink-0"
             >
-              <RotateCcw className="size-4" />
+              <RotateCcw className="size-3.5" />
               <span>Mark all present</span>
             </button>
           </div>
