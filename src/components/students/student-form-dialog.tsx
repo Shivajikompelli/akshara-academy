@@ -203,7 +203,7 @@ export function StudentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:max-w-xl max-h-[100dvh] sm:max-h-[90vh] h-full sm:h-auto overflow-y-auto bg-white p-6 sm:p-7 rounded-none sm:rounded-[24px] border border-[var(--card-border)] shadow-xl inset-0 sm:inset-auto fixed top-0 sm:top-1/2 left-0 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2">
+      <DialogContent className="max-w-xl w-full max-h-[90vh] overflow-y-auto bg-white p-6 sm:p-7 rounded-[24px] border border-[var(--card-border)] shadow-xl">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">

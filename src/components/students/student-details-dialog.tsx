@@ -36,7 +36,7 @@ export function StudentDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-xl inset-0 sm:inset-auto fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 space-y-4">
+      <DialogContent className="max-w-lg w-full bg-white p-5 sm:p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-xl space-y-4">
         {/* Top Header Row with Edit Button in the top right corner */}
         <DialogHeader className="p-0 border-b border-[var(--card-border)]/60 pb-3">
           <div className="flex items-center justify-between gap-3 pr-6">
@@ -209,3 +209,4 @@ export function StudentDetailsDialog({
     </Dialog>
   )
 }
+
