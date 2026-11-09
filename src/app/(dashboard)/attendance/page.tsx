@@ -452,7 +452,7 @@ export default function AttendancePage() {
   const isToday = Boolean(selectedDate && todayStr && selectedDate === todayStr)
 
   return (
-    <div className="space-y-6 max-w-[960px] mx-auto pb-36">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-24">
       {/* Dry Run Banner (shown if function reports dry run mode) */}
       {alertResult?.dry_run && (
         <div className="p-4 bg-[var(--attention-bg)] border border-[var(--attention)]/30 rounded-[16px] text-[var(--attention-text)] text-xs flex items-center justify-between">
@@ -469,13 +469,10 @@ export default function AttendancePage() {
       )}
 
       {/* 1. TOP CONTROLS & HEADER */}
-      <div className="bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-5">
+      <div className="bg-white p-4 sm:p-5 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Attendance</h1>
-            <p className="text-sm font-normal text-[var(--text-secondary)] mt-0.5">
-              Select class and date. Tap any student who is absent.
-            </p>
           </div>
 
           {/* Status Badge: Attendance taken or Not taken yet */}

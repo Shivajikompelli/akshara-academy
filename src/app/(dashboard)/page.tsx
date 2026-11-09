@@ -213,7 +213,7 @@ export default function HomePage() {
   const attendanceTakenToday = data.totalAttendanceRecords > 0
 
   return (
-    <div className="space-y-6 max-w-[960px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* Top Date Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -237,7 +237,7 @@ export default function HomePage() {
       </div>
 
       {/* 1. HERO CARD with purple gradient: today's date, three numbers, two actions */}
-      <AksharaCard variant="hero" className="p-6 sm:p-7">
+      <AksharaCard variant="hero" className="p-5 sm:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <span className="text-xs font-bold text-white/80 uppercase tracking-widest block">

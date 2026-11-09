@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Calendar, 
 } from 'lucide-react'
 import { formatCurrency, formatDate, formatPeriod } from '@/lib/formatters'
@@ -142,6 +143,22 @@ export default function FeesPage() {
   // Reminder Dialog states
   const [remindersDialogOpen, setRemindersDialogOpen] = useState(false)
   const [selectedSingleStudent, setSelectedSingleStudent] = useState<{ id: string; name: string } | null>(null)
+
+  // Fee Actions menu state
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setActionsMenuOpen(false)
+      }
+    }
+    if (actionsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [actionsMenuOpen])
 
   useEffect(() => {
     const now = new Date()
@@ -397,16 +414,13 @@ export default function FeesPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[960px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER (Clean, unboxed) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
             Fees Dashboard
           </h1>
-          <p className="text-sm font-normal text-[var(--text-secondary)] mt-0.5">
-            Track student fee collections, record payments, and manage WhatsApp reminders.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -420,37 +434,53 @@ export default function FeesPage() {
             <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          {/* Send Reminders Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedSingleStudent(null)
-              setRemindersDialogOpen(true)
-            }}
-            disabled={loading}
-            className="min-h-[44px] px-4 rounded-[12px] border-2 border-[var(--card-border)] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-sm flex items-center gap-2 cursor-pointer transition-colors"
-          >
-            <BellRing className="size-4" />
-            <span>Send reminders</span>
-          </button>
+          {/* Fee Actions Dropdown */}
+          <div className="relative inline-block" ref={actionsMenuRef}>
+            <button
+              type="button"
+              onClick={() => setActionsMenuOpen((v) => !v)}
+              className="min-h-[44px] px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
+            >
+              <span>Fee Actions</span>
+              <ChevronDown className={`size-4 transition-transform ${actionsMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          {/* Generate Monthly Fees (Primary Action) */}
-          <button
-            type="button"
-            onClick={handleGenerateMonthlyFees}
-            disabled={generatingFees || loading || !selectedMonth}
-            className="min-h-[44px] px-5 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 transition-all active:scale-[0.98]"
-          >
-            <PlusCircle className="size-4" />
-            <span>
-              {generatingFees ? 'Generating...' : 'Generate fees for this month'}
-            </span>
-          </button>
+            {actionsMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-60 rounded-[16px] bg-white border border-[var(--card-border)] shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    setSelectedSingleStudent(null)
+                    setRemindersDialogOpen(true)
+                  }}
+                  disabled={loading}
+                  className="w-full min-h-[44px] px-3 rounded-[10px] text-left text-sm font-semibold text-[var(--text)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center gap-2.5 cursor-pointer transition-colors"
+                >
+                  <BellRing className="size-4 text-[var(--primary)] shrink-0" />
+                  <span>Send reminders</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    handleGenerateMonthlyFees()
+                  }}
+                  disabled={generatingFees || loading || !selectedMonth}
+                  className="w-full min-h-[44px] px-3 rounded-[10px] text-left text-sm font-semibold text-[var(--text)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center gap-2.5 cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  <PlusCircle className="size-4 text-[var(--primary)] shrink-0" />
+                  <span>{generatingFees ? 'Generating...' : 'Generate fees for month'}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 2. SUMMARY CARD: Collected vs Outstanding for the month, in large type */}
-      <div className="bg-white p-6 sm:p-7 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-6">
+      <div className="bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xs space-y-4">
         {/* Month Navigation Strip */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -563,68 +593,31 @@ export default function FeesPage() {
 
       {/* 3. TABS & FILTER BAR (Clean strip, no nested box) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-        {/* Tabs: All / Pending / Paid & Overdue Filter Chip */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 p-1 bg-white border border-[var(--card-border)] rounded-[14px] shadow-2xs">
-            <button
-              type="button"
-              onClick={() => {
+        {/* Status Dropdown */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="fees-status-filter" className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0">
+            Status:
+          </label>
+          <select
+            id="fees-status-filter"
+            value={overdueChipActive ? 'overdue' : statusTab}
+            onChange={(e) => {
+              const val = e.target.value
+              if (val === 'overdue') {
+                setOverdueChipActive(true)
                 setStatusTab('all')
+              } else {
                 setOverdueChipActive(false)
-              }}
-              className={`px-3.5 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
-                statusTab === 'all' && !overdueChipActive
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
-              }`}
-            >
-              All ({fees.length})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStatusTab('pending')
-                setOverdueChipActive(false)
-              }}
-              className={`px-3.5 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
-                statusTab === 'pending' && !overdueChipActive
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
-              }`}
-            >
-              Pending ({fees.filter((f) => f.status !== 'paid').length})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStatusTab('paid')
-                setOverdueChipActive(false)
-              }}
-              className={`px-3.5 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
-                statusTab === 'paid' && !overdueChipActive
-                  ? 'bg-[var(--present)] text-white shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
-              }`}
-            >
-              Paid ({fees.filter((f) => f.status === 'paid').length})
-            </button>
-          </div>
-
-          {/* Overdue Filter Chip */}
-          <button
-            type="button"
-            onClick={() => setOverdueChipActive(!overdueChipActive)}
-            className={`min-h-[38px] px-3.5 rounded-full font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all ${
-              overdueChipActive
-                ? 'bg-[var(--attention)] text-white shadow-xs'
-                : 'bg-white text-[var(--attention-text)] border border-[var(--attention)]/30 hover:border-[var(--attention)] shadow-2xs'
-            }`}
+                setStatusTab(val as 'all' | 'pending' | 'paid')
+              }
+            }}
+            className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
           >
-            <AlertTriangle className="size-3.5" />
-            <span>Overdue ({fees.filter((f) => f.status === 'overdue').length})</span>
-          </button>
+            <option value="all">All Statuses ({fees.length})</option>
+            <option value="pending">Pending ({fees.filter((f) => f.status !== 'paid').length})</option>
+            <option value="paid">Paid ({fees.filter((f) => f.status === 'paid').length})</option>
+            <option value="overdue">Overdue ({fees.filter((f) => f.status === 'overdue').length})</option>
+          </select>
         </div>
 
         {/* Search & Class Dropdown */}

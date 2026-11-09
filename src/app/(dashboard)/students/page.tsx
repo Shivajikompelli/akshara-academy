@@ -167,7 +167,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[960px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER: Single primary button "Add student" */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -179,9 +179,6 @@ export default function StudentsPage() {
               {activeCount} Active
             </span>
           </div>
-          <p className="text-sm font-normal text-[var(--text-secondary)] mt-0.5">
-            Student registry, parent contacts, and class enrollment.
-          </p>
         </div>
 
         {/* Single Primary Button */}
@@ -208,7 +205,7 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* 2. SEARCH AT THE TOP & FILTERS AS PILLS */}
+      {/* 2. SEARCH AT THE TOP & FILTERS AS DROPDOWNS */}
       <div className="space-y-3">
         {/* Search input at the top */}
         <div className="relative">
@@ -222,46 +219,26 @@ export default function StudentsPage() {
           />
         </div>
 
-        {/* Filters as Pills */}
+        {/* Filters as Dropdowns */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          {/* Status filter pills */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1">
+          {/* Status filter dropdown */}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="student-status-filter"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
+            >
               Status:
-            </span>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('active')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'active'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
+            </label>
+            <select
+              id="student-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
             >
-              Active ({activeCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('inactive')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'inactive'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              Inactive ({inactiveCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'all'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              All ({students.length})
-            </button>
+              <option value="active">Active ({activeCount})</option>
+              <option value="inactive">Inactive ({inactiveCount})</option>
+              <option value="all">All ({students.length})</option>
+            </select>
           </div>
 
           {/* Class filter dropdown */}

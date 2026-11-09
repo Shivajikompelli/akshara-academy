@@ -268,7 +268,7 @@ export default function MessageLogPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[960px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* 1. TOP HEADER (Clean, unboxed) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -280,9 +280,6 @@ export default function MessageLogPage() {
               {logs.length} Total
             </span>
           </div>
-          <p className="text-sm font-normal text-[var(--text-secondary)] mt-0.5">
-            Audit history of WhatsApp absent alerts and fee reminders with live retry capability.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -310,7 +307,7 @@ export default function MessageLogPage() {
         </div>
       </div>
 
-      {/* 2. FILTER PILLS (All / Absent alerts / Fee reminders, status filter) & Search */}
+      {/* 2. FILTER DROPDOWNS & Search */}
       <div className="space-y-3">
         {/* Search Input */}
         <div className="relative">
@@ -324,97 +321,47 @@ export default function MessageLogPage() {
           />
         </div>
 
-        {/* Filter Pills row */}
+        {/* Filter Dropdowns row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          {/* Kind filter pills: All / Absent alerts / Fee reminders */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1 shrink-0">
+          {/* Kind filter dropdown */}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="messages-type-filter"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
+            >
               Type:
-            </span>
-            <button
-              type="button"
-              onClick={() => setKindFilter('all')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                kindFilter === 'all'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
+            </label>
+            <select
+              id="messages-type-filter"
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value as 'all' | 'absent_alert' | 'fee_reminder')}
+              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
             >
-              All Types ({logs.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setKindFilter('absent_alert')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                kindFilter === 'absent_alert'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              Absent Alerts ({logs.filter((l) => l.kind === 'absent_alert').length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setKindFilter('fee_reminder')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                kindFilter === 'fee_reminder'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              Fee Reminders ({logs.filter((l) => l.kind === 'fee_reminder').length})
-            </button>
+              <option value="all">All Types ({logs.length})</option>
+              <option value="absent_alert">Absent Alerts ({logs.filter((l) => l.kind === 'absent_alert').length})</option>
+              <option value="fee_reminder">Fee Reminders ({logs.filter((l) => l.kind === 'fee_reminder').length})</option>
+            </select>
           </div>
 
-          {/* Status filter pills */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mr-1 shrink-0">
+          {/* Status filter dropdown */}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="messages-status-filter"
+              className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] shrink-0"
+            >
               Status:
-            </span>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'all'
-                  ? 'bg-[var(--primary)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
+            </label>
+            <select
+              id="messages-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'sent' | 'failed' | 'queued')}
+              className="min-h-[44px] px-3.5 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs transition-colors"
             >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('sent')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'sent'
-                  ? 'bg-[var(--present)] text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              Sent ({logs.filter((l) => l.status === 'sent').length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('failed')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'failed'
-                  ? 'bg-[var(--attention)] text-white shadow-xs'
-                  : 'bg-white text-[var(--attention-text)] border border-[var(--attention)]/30 hover:border-[var(--attention)]'
-              }`}
-            >
-              Failed ({logs.filter((l) => l.status === 'failed').length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('queued')}
-              className={`min-h-[36px] px-3.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === 'queued'
-                  ? 'bg-slate-700 text-white shadow-xs'
-                  : 'bg-white text-[var(--text-secondary)] border border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
-              }`}
-            >
-              Queued ({logs.filter((l) => l.status === 'queued').length})
-            </button>
+              <option value="all">All Statuses ({logs.length})</option>
+              <option value="sent">Sent ({logs.filter((l) => l.status === 'sent').length})</option>
+              <option value="failed">Failed ({logs.filter((l) => l.status === 'failed').length})</option>
+              <option value="queued">Queued ({logs.filter((l) => l.status === 'queued').length})</option>
+            </select>
           </div>
         </div>
       </div>
