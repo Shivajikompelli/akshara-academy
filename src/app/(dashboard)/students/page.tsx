@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StudentFormDialog } from '@/components/students/student-form-dialog'
+import { StudentDetailsDialog } from '@/components/students/student-details-dialog'
 import { StatusConfirmDialog } from '@/components/students/status-confirm-dialog'
 import { InitialsAvatar } from '@/components/ui/initials-avatar'
 import {
@@ -34,6 +35,10 @@ export default function StudentsPage() {
   // Modals state
   const [formOpen, setFormOpen] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+
+  // Details card dialog
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<Student | null>(null)
 
   // Status confirm dialog
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
@@ -164,6 +169,11 @@ export default function StudentsPage() {
   function handleOpenEdit(student: Student) {
     setEditingStudent(student)
     setFormOpen(true)
+  }
+
+  function handleOpenDetails(student: Student) {
+    setSelectedStudentForDetails(student)
+    setDetailsOpen(true)
   }
 
   return (
@@ -310,7 +320,7 @@ export default function StudentsPage() {
           {filteredStudents.map((student) => (
             <div
               key={student.id}
-              onClick={() => handleOpenEdit(student)}
+              onClick={() => handleOpenDetails(student)}
               className="bg-white rounded-[20px] border border-[var(--card-border)]/70 p-4 sm:p-5 shadow-2xs hover:border-[var(--primary)]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
             >
               {/* Left: Avatar + Name, Admission, Class and School */}
@@ -318,9 +328,16 @@ export default function StudentsPage() {
                 <InitialsAvatar name={student.full_name} size="md" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-base text-[var(--text)] truncate">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenDetails(student)
+                      }}
+                      className="font-bold text-base text-[var(--text)] hover:text-[var(--primary)] hover:underline truncate text-left cursor-pointer transition-colors"
+                    >
                       {student.full_name}
-                    </span>
+                    </button>
                     {student.admission_no && (
                       <span className="text-xs font-normal text-[var(--text-secondary)] bg-[var(--primary-soft)] px-2 py-0.5 rounded-full shrink-0">
                         #{student.admission_no}
@@ -424,6 +441,14 @@ export default function StudentsPage() {
           ))}
         </div>
       )}
+
+      {/* Student Details Card Dialog */}
+      <StudentDetailsDialog
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        student={selectedStudentForDetails}
+        onEdit={handleOpenEdit}
+      />
 
       {/* Add / Edit Sheet / Dialog */}
       <StudentFormDialog
