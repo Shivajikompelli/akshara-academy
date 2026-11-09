@@ -44,3 +44,10 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+
+# android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.apk

@@ -122,15 +122,26 @@ export default function FeesPage() {
   const [fees, setFees] = useState<FeeSummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [generatingFees, setGeneratingFees] = useState(false)
-  const [todayStr] = useState<string>(() => new Date().toISOString().split('T')[0])
+  const [todayStr, setTodayStr] = useState<string>('')
 
   // Month Controls (default current month)
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
-    return `${currentYear}-${currentMonth}`
-  })
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+
+  useEffect(() => {
+    let ignore = false
+    const timer = setTimeout(() => {
+      if (ignore) return
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
+      setTodayStr(now.toISOString().split('T')[0])
+      setSelectedMonth(`${currentYear}-${currentMonth}`)
+    }, 0)
+    return () => {
+      ignore = true
+      clearTimeout(timer)
+    }
+  }, [])
 
   // Filters & Search: Tabs: All / Pending / Paid, with an Overdue filter chip
   const [statusTab, setStatusTab] = useState<'all' | 'pending' | 'paid'>('all')

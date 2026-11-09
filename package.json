@@ -7,10 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:contrast": "node scripts/check-contrast.mjs"
+    "test:contrast": "node scripts/check-contrast.mjs",
+    "android:build": "cd android && .\\gradlew assembleDebug",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
     "class-variance-authority": "^0.7.1",

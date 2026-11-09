@@ -30,12 +30,22 @@ interface AttendanceItem {
 export default function AttendancePage() {
   const [availableClasses, setAvailableClasses] = useState<string[]>([])
   const [selectedClass, setSelectedClass] = useState<string>('')
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0]
-  })
-  const [todayStr] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0]
-  })
+  const [selectedDate, setSelectedDate] = useState<string>('')
+  const [todayStr, setTodayStr] = useState<string>('')
+
+  useEffect(() => {
+    let ignore = false
+    const timer = setTimeout(() => {
+      if (ignore) return
+      const today = new Date().toISOString().split('T')[0]
+      setSelectedDate((prev) => prev || today)
+      setTodayStr(today)
+    }, 0)
+    return () => {
+      ignore = true
+      clearTimeout(timer)
+    }
+  }, [])
 
   // Student list state for the chosen class
   const [attendanceList, setAttendanceList] = useState<AttendanceItem[]>([])
