@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         details.push({ id: log.id, student_name: student.full_name, status: 'sent' })
       } else {
         try {
-          let metaPayload: any
+          let metaPayload: Record<string, unknown>
 
           if (log.kind === 'absent_alert') {
             const dateText = formatDateText(log.related_date || '')

@@ -5,6 +5,34 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 // Schedule config constant: days after due_date to trigger reminders
 const REMINDER_OFFSETS_DAYS = [0, 2] // Offset 0 (on due date), Offset 2 (2 days after due date)
 
+interface UnpaidFeeRow {
+  fee_id: string
+  student_id: string
+  full_name: string
+  period: string
+  amount_due: number
+  due_date: string
+  balance: number
+  status: string
+}
+
+interface StudentRow {
+  id: string
+  full_name: string
+  class_level: string
+  phone: string
+  whatsapp_opt_in: boolean
+  status: string
+}
+
+interface MessageLogRow {
+  id: string
+  student_id: string
+  fee_id: string | null
+  status: string
+  related_date: string | null
+}
+
 // Helper: Get Asia/Kolkata current date string (YYYY-MM-DD)
 function getTodayIST(): string {
   const now = new Date()
@@ -54,7 +82,6 @@ function getDaysDifference(targetDate: string, baseDate: string): number {
 export async function POST(req: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
     const cronSecret = process.env.CRON_SECRET || ''
 
@@ -146,7 +173,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Load Active Students for these fees
-    const studentIds = Array.from(new Set(unpaidFees.map((f: any) => f.student_id)))
+    const feesList = unpaidFees as unknown as UnpaidFeeRow[]
+    const studentIds = Array.from(new Set(feesList.map((f) => f.student_id)))
     const { data: students, error: studentsError } = await adminClient
       .from('students')
       .select('id, full_name, class_level, phone, whatsapp_opt_in, status')
@@ -155,19 +183,19 @@ export async function POST(req: NextRequest) {
 
     if (studentsError) throw studentsError
 
-    const studentsMap = new Map<string, any>()
-    ;(students || []).forEach((s: any) => {
+    const studentsMap = new Map<string, StudentRow>()
+    ;((students || []) as StudentRow[]).forEach((s) => {
       studentsMap.set(s.id, s)
     })
 
     // Filter fees down to active students
-    const activeStudentFees = unpaidFees
-      .filter((f: any) => studentsMap.has(f.student_id))
+    const activeStudentFees = feesList
+      .filter((f) => studentsMap.has(f.student_id))
       // Sort by period ascending so oldest fee comes first
-      .sort((a: any, b: any) => a.period.localeCompare(b.period))
+      .sort((a, b) => a.period.localeCompare(b.period))
 
     // 6. Fetch previous fee_reminder logs for these fees to check schedule
-    const feeIds = activeStudentFees.map((f: any) => f.fee_id)
+    const feeIds = activeStudentFees.map((f) => f.fee_id)
     const { data: existingLogs, error: logsError } = await adminClient
       .from('message_log')
       .select('id, student_id, fee_id, status, related_date')
@@ -178,11 +206,11 @@ export async function POST(req: NextRequest) {
     if (logsError) throw logsError
 
     // Group earlier sent logs by fee_id
-    const logsByFee = new Map<string, any[]>()
+    const logsByFee = new Map<string, MessageLogRow[]>()
     // Track students who already had a reminder logged today
     const studentsRemindedToday = new Set<string>()
 
-    ;(existingLogs || []).forEach((log: any) => {
+    ;((existingLogs || []) as MessageLogRow[]).forEach((log) => {
       if (log.fee_id) {
         const list = logsByFee.get(log.fee_id) || []
         list.push(log)
@@ -202,7 +230,7 @@ export async function POST(req: NextRequest) {
       .neq('status', 'failed')
       .in('student_id', studentIds)
 
-    ;(todayLogs || []).forEach((tl: any) => {
+    ;((todayLogs || []) as Array<{ student_id: string | null }>).forEach((tl) => {
       if (tl.student_id) studentsRemindedToday.add(tl.student_id)
     })
 
@@ -210,8 +238,8 @@ export async function POST(req: NextRequest) {
     const skippedNoConsentStudents: string[] = []
     const alreadySentStudents: string[] = []
     const eligibleQueue: Array<{
-      fee: any
-      student: any
+      fee: UnpaidFeeRow
+      student: StudentRow
       reminderNumber: number
     }> = []
 
