@@ -61,16 +61,34 @@ function formatTimeIST(dateString: string): string {
 async function queryHomeSummaryData(currentTodayIST: string): Promise<Omit<HomeSummaryData, 'loading'>> {
   const supabase = createClient()
 
-  // 1. Load active students
-  const { data: students, error: studentsErr } = await supabase
-    .from('students')
-    .select('id, class_level')
-    .eq('status', 'active')
+  // Execute students, today's attendance, and overdue fees concurrently in parallel
+  // to eliminate sequential network waterfalls on mobile connections
+  const [
+    { data: students, error: studentsErr },
+    { data: attRecords, error: attErr },
+    { data: overdueFees, error: feesErr },
+  ] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id, class_level')
+      .eq('status', 'active'),
+    supabase
+      .from('attendance')
+      .select('student_id, status, created_at')
+      .eq('att_date', currentTodayIST),
+    supabase
+      .from('fee_summary')
+      .select('student_id, balance')
+      .eq('status', 'overdue'),
+  ])
 
   if (studentsErr) throw studentsErr
+  if (attErr) throw attErr
+  if (feesErr) throw feesErr
 
   const activeStudents = students || []
   const enrolledCount = activeStudents.length
+  const activeStudentIds = new Set(activeStudents.map((s) => s.id))
 
   // Distinct classes sorted
   const classMap = new Map<string, string[]>()
@@ -86,17 +104,8 @@ async function queryHomeSummaryData(currentTodayIST: string): Promise<Omit<HomeS
     return numA - numB
   })
 
-  // 2. Load today's attendance in IST
-  const studentIds = activeStudents.map((s) => s.id)
-  const { data: attRecords, error: attErr } = await supabase
-    .from('attendance')
-    .select('student_id, status, created_at')
-    .eq('att_date', currentTodayIST)
-    .in('student_id', studentIds)
-
-  if (attErr) throw attErr
-
-  const todayAtt = attRecords || []
+  // Attendance map for active students
+  const todayAtt = (attRecords || []).filter((rec) => activeStudentIds.has(rec.student_id))
   const attByStudent = new Map<string, { status: string; created_at?: string }>()
   let presentCount = 0
   let absentCount = 0
@@ -110,7 +119,7 @@ async function queryHomeSummaryData(currentTodayIST: string): Promise<Omit<HomeS
     if (rec.status === 'absent') absentCount++
   })
 
-  // 3. Compute per-class attendance status
+  // Compute per-class attendance status
   const classesStatus: ClassAttendanceStatus[] = sortedClasses.map((cls) => {
     const clsStudentIds = classMap.get(cls) || []
     let pCount = 0
@@ -147,14 +156,7 @@ async function queryHomeSummaryData(currentTodayIST: string): Promise<Omit<HomeS
     }
   })
 
-  // 4. Load overdue fees from fee_summary view (count distinct overdue students)
-  const { data: overdueFees, error: feesErr } = await supabase
-    .from('fee_summary')
-    .select('student_id, balance')
-    .eq('status', 'overdue')
-
-  if (feesErr) throw feesErr
-
+  // Compute overdue count and balance
   const overdueStudentIds = new Set(
     (overdueFees || []).map((row) => row.student_id).filter(Boolean)
   )
