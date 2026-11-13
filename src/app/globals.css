@@ -140,6 +140,32 @@ body {
   background-color: var(--app-bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  /* Prevent horizontal viewport shifting on mobile */
+  overflow-x: hidden;
+  touch-action: manipulation;
+}
+
+/* Safe-area utilities for notched phones, home indicators, and Android gesture navigation */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+.pt-safe {
+  padding-top: max(12px, env(safe-area-inset-top, 12px));
+}
+
+/* Minimum 44px touch target guarantee */
+.touch-target-44 {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth horizontal chip scrolling without ugly browser scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Completely hide Next.js dev indicator ("N" logo), dev tools toolbar, and rendering animation overlays */
@@ -147,10 +173,22 @@ nextjs-portal,
 [data-nextjs-dev-indicator],
 [data-nextjs-toast],
 [data-nextjs-dialog-overlay],
-#nextjs-dev-indicator,
-next-route-announcer {
+#nextjs-dev-indicator {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Keep Next.js route announcer accessible to screen readers while visually hidden */
+next-route-announcer {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

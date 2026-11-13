@@ -36,10 +36,10 @@ export function StudentDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full bg-white p-5 sm:p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-xl space-y-4">
+      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-lg bg-white p-5 sm:p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-2xl space-y-4">
         {/* Top Header Row with Edit Button in the top right corner */}
         <DialogHeader className="p-0 border-b border-[var(--card-border)]/60 pb-3">
-          <div className="flex items-center justify-between gap-3 pr-6">
+          <div className="flex items-center justify-between gap-3 pr-10 sm:pr-8">
             <div>
               <DialogTitle className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">
                 Student Details

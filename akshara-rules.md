@@ -27,8 +27,33 @@ Users: management only (2 admin accounts). Sign-ups disabled.
 
 ## WhatsApp
 - Only approved templates can be sent outside a 24h window. Template names:
-  - `absent_alert_v1`: "Dear Parent, {{1}} was absent from Akshara Academy on {{2}}. Please contact us if this is unexpected."
-  - `fee_reminder_v1`: "Dear Parent, the fee of Rs {{2}} for {{1}} for {{3}} is due on {{4}}. Please contact Akshara Academy if already paid."
+  - `absent_alert_v1`:
+    ```
+    Dear Parent,
+    This is an attendance update.
+    {{1}} has been marked absent today ({{2}}).
+    Kindly contact us if you have any concerns.
+
+    – Akshara Academy
+    ```
+  - `fee_reminder_v1`:
+    ```
+    Dear Parent,
+    This is a fee reminder for {{1}}.
+    The tuition fee of ₹{{2}} for {{3}} is due on {{4}}.
+    Kindly ignore this message if already paid.
+
+    – Akshara Academy
+    ```
+  - `payment_receipt_v1`:
+    ```
+    Dear Parent,
+    This is a payment confirmation for {{1}}.
+    We have received the tuition fee of ₹{{2}} for {{3}} on {{4}} (Receipt: {{5}}).
+    Thank you for your payment.
+
+    – Akshara Academy
+    ```
 - Never message a parent whose `whatsapp_opt_in` is false.
 - Log every attempt in `message_log`; store failures with the error text.
 - Send in small batches with a short delay, not all at once.

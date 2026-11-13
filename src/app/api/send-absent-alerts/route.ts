@@ -1,5 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { verifyApiAuth } from '@/lib/auth'
+import { apiError, apiSuccess } from '@/lib/api-response'
+import { ValidationError } from '@/lib/errors'
 
 function formatDate(dateStr: string): string {
   try {
@@ -17,29 +20,19 @@ function formatDate(dateStr: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verify User Session
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized: please sign in.' },
-        { status: 401 }
-      )
+    // 1. Verify User Session & Manager Authorization
+    const auth = await verifyApiAuth(req)
+    if (!auth.authorized) {
+      return auth.response
     }
+    const supabase = await createClient()
 
     // 2. Parse Payload
     const body = await req.json()
     const { class_level, date } = body
 
     if (!class_level || !date) {
-      return NextResponse.json(
-        { error: 'Missing class_level or date' },
-        { status: 400 }
-      )
+      throw new ValidationError('Missing class_level or date')
     }
 
     // Only allow dates that are today or yesterday
@@ -54,11 +47,8 @@ export async function POST(req: NextRequest) {
 
     const allowedDates = new Set([todayIST, yesterdayIST, todayUTC, yesterdayUTC])
     if (!allowedDates.has(date)) {
-      return NextResponse.json(
-        {
-          error: `Alerts can only be sent for today (${todayIST}) or yesterday (${yesterdayIST}).`,
-        },
-        { status: 400 }
+      throw new ValidationError(
+        `Alerts can only be sent for today (${todayIST}) or yesterday (${yesterdayIST}).`
       )
     }
 
@@ -72,7 +62,7 @@ export async function POST(req: NextRequest) {
     if (studentsError) throw studentsError
 
     if (!classStudents || classStudents.length === 0) {
-      return NextResponse.json({
+      return apiSuccess({
         dry_run: true,
         sent: 0,
         failed: 0,
@@ -101,7 +91,7 @@ export async function POST(req: NextRequest) {
     const absentStudents = classStudents.filter((s) => absentStudentIds.has(s.id))
 
     if (absentStudents.length === 0) {
-      return NextResponse.json({
+      return apiSuccess({
         dry_run: true,
         sent: 0,
         failed: 0,
@@ -126,9 +116,10 @@ export async function POST(req: NextRequest) {
     let sentCount = 0
     let failedCount = 0
     let alreadySentCount = 0
+    const BATCH_SIZE = 5
 
-    // 6. Process eligible students
-    for (const student of eligibleStudents) {
+    // 6. Process eligible students in small batches
+    async function processAbsentStudent(student: (typeof eligibleStudents)[number]) {
       // Step A: Insert message_log row first
       const { data: logRow, error: logInsertError } = await supabase
         .from('message_log')
@@ -149,11 +140,11 @@ export async function POST(req: NextRequest) {
           logInsertError.message?.toLowerCase().includes('unique')
         ) {
           alreadySentCount++
-          continue
+          return
         }
         console.error(`Log insert failed for student ${student.full_name}:`, logInsertError)
         failedCount++
-        continue
+        return
       }
 
       const logId = logRow.id
@@ -170,6 +161,9 @@ export async function POST(req: NextRequest) {
 
         sentCount++
       } else {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
+
         try {
           const cleanPhone = student.phone.replace(/^\+/, '')
           const formattedDateText = formatDate(date)
@@ -201,6 +195,7 @@ export async function POST(req: NextRequest) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(metaPayload),
+            signal: controller.signal,
           })
 
           const metaJson = await metaRes.json()
@@ -244,13 +239,21 @@ export async function POST(req: NextRequest) {
             .eq('id', logId)
 
           failedCount++
+        } finally {
+          clearTimeout(timeoutId)
         }
       }
-
-      await new Promise((resolve) => setTimeout(resolve, 200))
     }
 
-    return NextResponse.json({
+    for (let i = 0; i < eligibleStudents.length; i += BATCH_SIZE) {
+      const batch = eligibleStudents.slice(i, i + BATCH_SIZE)
+      await Promise.all(batch.map((student) => processAbsentStudent(student)))
+      if (i + BATCH_SIZE < eligibleStudents.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+    }
+
+    return apiSuccess({
       dry_run: isDryRun,
       sent: sentCount,
       failed: failedCount,
@@ -259,9 +262,8 @@ export async function POST(req: NextRequest) {
       total_absentees: absentStudents.length,
     })
   } catch (err: unknown) {
-    console.error('API send-absent-alerts error:', err)
-    const message = err instanceof Error ? err.message : 'Internal Server Error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return apiError(err, req)
   }
 }
+
 

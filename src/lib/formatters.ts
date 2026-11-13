@@ -108,3 +108,42 @@ export function formatPeriod(periodStr: string | null | undefined): string {
     return periodStr
   }
 }
+
+/**
+ * Returns today's date string (YYYY-MM-DD) in Asia/Kolkata (IST) timezone,
+ * avoiding UTC midnight rollback issues.
+ */
+export function getTodayIST(): string {
+  const now = new Date()
+  const istOffsetMs = 5.5 * 60 * 60 * 1000
+  const istDate = new Date(now.getTime() + istOffsetMs)
+  return istDate.toISOString().split('T')[0]
+}
+
+/**
+ * Returns current Year-Month string (YYYY-MM) in Asia/Kolkata (IST) timezone.
+ */
+export function getCurrentMonthIST(): string {
+  return getTodayIST().slice(0, 7)
+}
+
+/**
+ * Safely formats a calendar year, 1-based month, and day into YYYY-MM-DD
+ * without converting through UTC (`toISOString()`), preventing -1 day shifts in IST.
+ */
+export function formatYYYYMMDD(year: number, month1Based: number, day: number): string {
+  const y = String(year).padStart(4, '0')
+  const m = String(month1Based).padStart(2, '0')
+  const d = String(day).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Adds or subtracts calendar days from a YYYY-MM-DD string safely without UTC timezone shift.
+ */
+export function addDaysYYYYMMDD(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return dateStr
+  const dt = new Date(Date.UTC(y, m - 1, d + deltaDays))
+  return dt.toISOString().split('T')[0]
+}

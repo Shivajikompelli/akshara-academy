@@ -71,9 +71,10 @@ export function AccountMenu() {
     setLoading(true)
     const supabase = createClient()
     try {
+      await fetch('/api/auth/logout', { method: 'POST' })
       await supabase.auth.signOut()
-      toast.success('Signed out successfully')
-      router.push('/login')
+      toast.success('Signed out securely')
+      router.replace('/login')
       router.refresh()
     } catch (err: unknown) {
       console.error('Logout error:', err)
@@ -117,7 +118,7 @@ export function AccountMenu() {
           role="dialog"
           aria-modal="true"
           aria-label="Account details"
-          className="absolute right-0 top-14 z-50 w-80 sm:w-88 rounded-[24px] bg-white border border-[var(--card-border)] p-6 shadow-2xl space-y-5 animate-in fade-in-0 zoom-in-95"
+          className="absolute right-0 top-14 z-50 w-[calc(100vw-2rem)] max-w-[340px] rounded-[24px] bg-white border border-[var(--card-border)] p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in-0 zoom-in-95"
         >
           {/* Header: Large avatar, Name (18px bold), Role Manager */}
           <div className="flex items-center gap-4">

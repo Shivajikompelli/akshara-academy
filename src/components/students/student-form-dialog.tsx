@@ -8,14 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { MessageSquare, AlertCircle, AlertTriangle, User } from 'lucide-react'
-import { parseAndFormatIndianPhone } from '@/lib/formatters'
+import { parseAndFormatIndianPhone, getTodayIST } from '@/lib/formatters'
 import { CLASS_OPTIONS, type Student } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -44,7 +43,9 @@ export function StudentFormDialog({
   const [admissionDate, setAdmissionDate] = useState('')
   const [admissionNo, setAdmissionNo] = useState('')
   const [whatsappOptIn, setWhatsappOptIn] = useState(false)
-  const [fee, setFee] = useState<number>(1000)
+  const [feeInput, setFeeInput] = useState<string>('1000')
+  const [feeDueDayInput, setFeeDueDayInput] = useState<string>('5')
+  const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<'active' | 'inactive'>('active')
 
   // Validation & state
@@ -55,36 +56,48 @@ export function StudentFormDialog({
 
   // Pre-fill fields when editing or reset for adding
   useEffect(() => {
-    if (studentToEdit) {
-      setFullName(studentToEdit.full_name || '')
-      setClassLevel(studentToEdit.class_level || 'Class 10')
-      setSchool(studentToEdit.school || '')
-      setParentName(studentToEdit.parent_name || '')
-      // Remove +91 prefix for friendly display in the 10-digit input box
-      const rawPhone = studentToEdit.phone || ''
-      setPhone(rawPhone.startsWith('+91') ? rawPhone.slice(3) : rawPhone)
-      setAddress(studentToEdit.address || '')
-      setAdmissionDate(studentToEdit.admission_date || new Date().toISOString().split('T')[0])
-      setAdmissionNo(studentToEdit.admission_no || '')
-      setWhatsappOptIn(!!studentToEdit.whatsapp_opt_in)
-      setFee(studentToEdit.monthly_fee ?? 1000)
-      setStatus(studentToEdit.status || 'active')
-    } else {
-      setFullName('')
-      setClassLevel('Class 10')
-      setSchool('')
-      setParentName('')
-      setPhone('')
-      setAddress('')
-      setAdmissionDate(new Date().toISOString().split('T')[0])
-      setAdmissionNo('')
-      setWhatsappOptIn(false)
-      setFee(1000)
-      setStatus('active')
+    let ignore = false
+    const timer = setTimeout(() => {
+      if (ignore) return
+      if (studentToEdit) {
+        setFullName(studentToEdit.full_name || '')
+        setClassLevel(studentToEdit.class_level || 'Class 10')
+        setSchool(studentToEdit.school || '')
+        setParentName(studentToEdit.parent_name || '')
+        // Remove +91 prefix for friendly display in the 10-digit input box
+        const rawPhone = studentToEdit.phone || ''
+        setPhone(rawPhone.startsWith('+91') ? rawPhone.slice(3) : rawPhone)
+        setAddress(studentToEdit.address || '')
+        setAdmissionDate(studentToEdit.admission_date || getTodayIST())
+        setAdmissionNo(studentToEdit.admission_no || '')
+        setWhatsappOptIn(!!studentToEdit.whatsapp_opt_in)
+        setFeeInput(String(studentToEdit.monthly_fee ?? 1000))
+        setFeeDueDayInput(String(studentToEdit.fee_due_day ?? 5))
+        setNotes(studentToEdit.notes || '')
+        setStatus(studentToEdit.status || 'active')
+      } else {
+        setFullName('')
+        setClassLevel('Class 10')
+        setSchool('')
+        setParentName('')
+        setPhone('')
+        setAddress('')
+        setAdmissionDate(getTodayIST())
+        setAdmissionNo('')
+        setWhatsappOptIn(false)
+        setFeeInput('1000')
+        setFeeDueDayInput('5')
+        setNotes('')
+        setStatus('active')
+      }
+      setPhoneError(null)
+      setFormError(null)
+      setDuplicateWarning(null)
+    }, 0)
+    return () => {
+      ignore = true
+      clearTimeout(timer)
     }
-    setPhoneError(null)
-    setFormError(null)
-    setDuplicateWarning(null)
   }, [studentToEdit, open])
 
   // Real-time phone validation helper on blur
@@ -149,6 +162,18 @@ export function StudentFormDialog({
       return
     }
 
+    const parsedFee = feeInput.trim() === '' ? 0 : Number(feeInput)
+    if (Number.isNaN(parsedFee) || parsedFee < 0) {
+      setFormError('Monthly fee must be 0 or greater.')
+      return
+    }
+
+    const parsedDueDay = feeDueDayInput.trim() === '' ? 5 : Math.round(Number(feeDueDayInput))
+    if (Number.isNaN(parsedDueDay) || parsedDueDay < 1 || parsedDueDay > 28) {
+      setFormError('Monthly fee due day must be between 1 and 28.')
+      return
+    }
+
     // 3. Duplicate check before insert
     if (!isEditing && !forceSave) {
       const isDuplicate = await checkForDuplicate()
@@ -169,7 +194,9 @@ export function StudentFormDialog({
         address: address.trim() || null,
         admission_date: admissionDate || null,
         whatsapp_opt_in: whatsappOptIn,
-        monthly_fee: Number(fee) || 0,
+        monthly_fee: parsedFee,
+        fee_due_day: parsedDueDay,
+        notes: notes.trim() || null,
         status,
       }
 
@@ -193,9 +220,24 @@ export function StudentFormDialog({
       onOpenChange(false)
     } catch (err: unknown) {
       console.error('Error saving student:', err)
-      const msg = err instanceof Error ? err.message : 'Failed to save student record.'
-      setFormError(msg)
-      toast.error(msg)
+      const rawMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Failed to save student record.'
+      const errCode =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? String((err as { code: unknown }).code)
+          : ''
+
+      const friendlyMsg =
+        errCode === '23505' || rawMsg.includes('students_admission_no_key')
+          ? `Admission number "${admissionNo.trim()}" is already assigned to another student.`
+          : rawMsg
+
+      setFormError(friendlyMsg)
+      toast.error(friendlyMsg)
     } finally {
       setLoading(false)
     }
@@ -203,299 +245,381 @@ export function StudentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-full max-h-[90vh] overflow-y-auto bg-white p-6 sm:p-7 rounded-[24px] border border-[var(--card-border)] shadow-xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2.5">
-            <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
-              <User className="size-5" />
-            </div>
-            <div>
-              <DialogTitle className="text-lg font-bold text-[var(--text)]">
-                {isEditing ? 'Edit Student' : 'Add New Student'}
-              </DialogTitle>
-              <DialogDescription className="text-xs font-normal text-[var(--text-secondary)] mt-0.5">
-                {isEditing
-                  ? 'Update student, parent, and fee details.'
-                  : 'Enter student, parent, and enrollment information.'}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {formError && (
-          <div className="flex items-center gap-2 p-3.5 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[12px] border border-[var(--attention)]/30">
-            <AlertCircle className="size-4 shrink-0" />
-            <span>{formError}</span>
-          </div>
-        )}
-
-        {duplicateWarning && (
-          <div className="p-4 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[14px] border border-[var(--attention)]/30 space-y-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="size-5 shrink-0 text-[var(--attention-text)] mt-0.5" />
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px] w-[calc(100%-1.5rem)] sm:max-w-2xl max-h-[88dvh] flex flex-col"
+        showCloseButton={true}
+      >
+        {/* Fixed Header */}
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[var(--card-border)]/80 bg-white shrink-0 pr-12">
+          <DialogHeader className="gap-1 text-left">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-[14px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0 shadow-2xs">
+                <User className="size-5 stroke-[2.2]" />
+              </div>
               <div>
-                <p className="font-bold text-[var(--attention-text)]">Duplicate Student Detected</p>
-                <p className="text-[var(--text-secondary)] text-xs mt-0.5">{duplicateWarning}</p>
+                <DialogTitle className="text-base sm:text-lg font-bold text-[var(--text)] tracking-tight">
+                  {isEditing ? 'Edit Student' : 'Add New Student'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-[var(--text-secondary)]">
+                  {isEditing
+                    ? 'Update student profile, parent contact, and fee details.'
+                    : 'Enter student information, parent contact, and monthly fees.'}
+                </DialogDescription>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setDuplicateWarning(null)}
-                className="px-3 py-1.5 rounded-[8px] border border-[var(--card-border)] bg-white text-xs font-bold text-[var(--text-secondary)] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleSubmit(e, true)}
-                className="px-3 py-1.5 rounded-[8px] bg-[var(--primary)] text-white text-xs font-bold cursor-pointer"
-              >
-                Save Anyway
-              </button>
-            </div>
-          </div>
-        )}
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6 pt-2">
-          {/* Group 1: Student Details */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--card-border)]/50 pb-1.5">
-              1. Student Details
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="full_name" className="text-xs font-bold text-[var(--text)]">
-                  Student Full Name *
-                </Label>
-                <Input
-                  id="full_name"
-                  required
-                  placeholder="e.g. Rahul Sharma"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                  disabled={loading}
-                />
+        {/* Form Container */}
+        <form
+          id="student-form"
+          onSubmit={(e) => handleSubmit(e, false)}
+          className="flex flex-col flex-1 min-h-0 overflow-hidden"
+        >
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 space-y-6 overscroll-contain">
+            {formError && (
+              <div className="flex items-center gap-2 p-3.5 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[14px] border border-[var(--attention)]/30 animate-in fade-in-50">
+                <AlertCircle className="size-4 shrink-0" />
+                <span className="font-medium">{formError}</span>
               </div>
+            )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="class_level" className="text-xs font-bold text-[var(--text)]">
-                  Class Level *
-                </Label>
-                <select
-                  id="class_level"
-                  value={classLevel}
-                  onChange={(e) => setClassLevel(e.target.value)}
-                  required
-                  className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-base font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
-                  disabled={loading}
-                >
-                  {CLASS_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="school" className="text-xs font-bold text-[var(--text)]">
-                  School
-                </Label>
-                <Input
-                  id="school"
-                  placeholder="e.g. Delhi Public School"
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="admission_no" className="text-xs font-bold text-[var(--text)]">
-                  Admission Number
-                </Label>
-                <Input
-                  id="admission_no"
-                  placeholder="e.g. AK-2026-001"
-                  value={admissionNo}
-                  onChange={(e) => setAdmissionNo(e.target.value)}
-                  className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="admission_date" className="text-xs font-bold text-[var(--text)]">
-                  Admission Date
-                </Label>
-                <Input
-                  id="admission_date"
-                  type="date"
-                  value={admissionDate}
-                  onChange={(e) => setAdmissionDate(e.target.value)}
-                  className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="status" className="text-xs font-bold text-[var(--text)]">
-                  Status
-                </Label>
-                <select
-                  id="status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
-                  className="w-full h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-base font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
-                  disabled={loading}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="address" className="text-xs font-bold text-[var(--text)]">
-                Residential Address
-              </Label>
-              <Input
-                id="address"
-                placeholder="House No, Street, Area, City"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          {/* Group 2: Parent Contact (with fixed +91 prefix) */}
-          <div className="space-y-4 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--card-border)]/50 pb-1.5">
-              2. Parent Contact
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="parent_name" className="text-xs font-bold text-[var(--text)]">
-                  Parent Name *
-                </Label>
-                <Input
-                  id="parent_name"
-                  required
-                  placeholder="e.g. Suresh Sharma"
-                  value={parentName}
-                  onChange={(e) => setParentName(e.target.value)}
-                  className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-xs font-bold text-[var(--text)]">
-                  Parent Mobile Number *
-                </Label>
-                <div className="relative flex rounded-[12px] border border-[var(--card-border)] focus-within:ring-2 focus-within:ring-[var(--primary)] overflow-hidden">
-                  <div className="flex items-center px-3.5 bg-[var(--primary-soft)] text-[var(--text-secondary)] font-mono font-bold text-sm border-r border-[var(--card-border)]">
-                    +91
+            {duplicateWarning && (
+              <div className="p-4 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[16px] border border-[var(--attention)]/30 space-y-3 animate-in fade-in-50">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="size-5 shrink-0 text-[var(--attention-text)] mt-0.5" />
+                  <div>
+                    <p className="font-bold text-[var(--attention-text)]">Duplicate Student Detected</p>
+                    <p className="text-[var(--text-secondary)] text-xs mt-0.5 leading-relaxed">{duplicateWarning}</p>
                   </div>
-                  <input
-                    id="phone"
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateWarning(null)}
+                    className="px-3.5 py-1.5 rounded-[10px] border border-[var(--card-border)] bg-white text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, true)}
+                    className="px-3.5 py-1.5 rounded-[10px] bg-[var(--primary)] text-white text-xs font-bold cursor-pointer hover:bg-[var(--primary-hover)] shadow-2xs"
+                  >
+                    Save Anyway
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 1. Student Details */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--card-border)]/60">
+                <span className="size-5 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] text-xs font-bold flex items-center justify-center">
+                  1
+                </span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+                  Student Details
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="full_name" className="text-xs font-bold text-[var(--text)]">
+                    Student Full Name <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <Input
+                    id="full_name"
                     required
-                    type="tel"
-                    placeholder="9876543210"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value)
-                      if (phoneError) setPhoneError(null)
-                    }}
-                    onBlur={handlePhoneBlur}
-                    className="w-full h-12 px-3 text-base font-mono bg-white text-[var(--text)] focus:outline-none"
+                    placeholder="e.g. Rahul Sharma"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
                     disabled={loading}
                   />
                 </div>
-                {phoneError ? (
-                  <p className="text-xs text-[var(--attention-text)] font-bold">{phoneError}</p>
-                ) : (
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Enter 10-digit mobile number (starts with 6, 7, 8, or 9).
-                  </p>
-                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="class_level" className="text-xs font-bold text-[var(--text)]">
+                    Class Level <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <select
+                    id="class_level"
+                    value={classLevel}
+                    onChange={(e) => setClassLevel(e.target.value)}
+                    required
+                    className="w-full h-11 sm:h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm sm:text-base font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-2xs"
+                    disabled={loading}
+                  >
+                    {CLASS_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="school" className="text-xs font-bold text-[var(--text)]">
+                    School
+                  </Label>
+                  <Input
+                    id="school"
+                    placeholder="e.g. Delhi Public School"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="admission_no" className="text-xs font-bold text-[var(--text)]">
+                    Admission Number
+                  </Label>
+                  <Input
+                    id="admission_no"
+                    placeholder="e.g. AK-2026-001"
+                    value={admissionNo}
+                    onChange={(e) => setAdmissionNo(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)] font-mono"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="admission_date" className="text-xs font-bold text-[var(--text)]">
+                    Admission Date
+                  </Label>
+                  <Input
+                    id="admission_date"
+                    type="date"
+                    value={admissionDate}
+                    onChange={(e) => setAdmissionDate(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="status" className="text-xs font-bold text-[var(--text)]">
+                    Enrollment Status
+                  </Label>
+                  <select
+                    id="status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
+                    className="w-full h-11 sm:h-12 px-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm sm:text-base font-bold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-2xs"
+                    disabled={loading}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="address" className="text-xs font-bold text-[var(--text)]">
+                  Residential Address
+                </Label>
+                <Input
+                  id="address"
+                  placeholder="House No, Street, Area, City"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
+                  disabled={loading}
+                />
               </div>
             </div>
 
-            <div className="p-4 rounded-[16px] border border-[var(--card-border)] bg-[var(--primary-soft)]/40">
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <Checkbox
-                  checked={whatsappOptIn}
-                  onCheckedChange={(checked) => setWhatsappOptIn(checked === true)}
-                  disabled={loading}
-                  className="mt-0.5"
-                />
-                <div>
-                  <span className="text-sm font-bold text-[var(--text)] flex items-center gap-1.5">
-                    <MessageSquare className="size-4 text-[var(--whatsapp)]" />
-                    Parent agreed to receive WhatsApp messages
-                  </span>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                    Required to send automated attendance absent alerts and fee reminders to this number.
+            {/* 2. Parent Contact & WhatsApp */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--card-border)]/60">
+                <span className="size-5 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] text-xs font-bold flex items-center justify-center">
+                  2
+                </span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+                  Parent Contact & Messaging
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="parent_name" className="text-xs font-bold text-[var(--text)]">
+                    Parent Name <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <Input
+                    id="parent_name"
+                    required
+                    placeholder="e.g. Suresh Sharma"
+                    value={parentName}
+                    onChange={(e) => setParentName(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-xs font-bold text-[var(--text)]">
+                    Parent Mobile Number <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <div className="relative flex rounded-[12px] border border-[var(--card-border)] focus-within:ring-2 focus-within:ring-[var(--primary)] overflow-hidden bg-white shadow-2xs">
+                    <div className="flex items-center px-3 sm:px-3.5 bg-[var(--primary-soft)] text-[var(--text-secondary)] font-mono font-bold text-xs sm:text-sm border-r border-[var(--card-border)] select-none">
+                      +91
+                    </div>
+                    <input
+                      id="phone"
+                      required
+                      type="tel"
+                      placeholder="9876543210"
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value)
+                        if (phoneError) setPhoneError(null)
+                      }}
+                      onBlur={handlePhoneBlur}
+                      className="w-full h-11 sm:h-12 px-3 text-sm sm:text-base font-mono bg-white text-[var(--text)] focus:outline-none"
+                      disabled={loading}
+                    />
+                  </div>
+                  {phoneError ? (
+                    <p className="text-xs text-[var(--attention-text)] font-bold">{phoneError}</p>
+                  ) : (
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      10-digit mobile number (starts with 6, 7, 8, or 9).
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* WhatsApp Opt-in Card */}
+              <div className="p-3.5 sm:p-4 rounded-[16px] border border-[#25D366]/30 bg-[#25D366]/5 transition-colors hover:bg-[#25D366]/10">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <Checkbox
+                    checked={whatsappOptIn}
+                    onCheckedChange={(checked) => setWhatsappOptIn(checked === true)}
+                    disabled={loading}
+                    className="mt-0.5 size-5 data-[state=checked]:bg-[#25D366] data-[state=checked]:border-[#25D366]"
+                  />
+                  <div className="space-y-0.5">
+                    <span className="text-xs sm:text-sm font-bold text-[var(--text)] flex items-center gap-1.5">
+                      <MessageSquare className="size-4 text-[#25D366] shrink-0" />
+                      Parent agreed to receive WhatsApp messages
+                    </span>
+                    <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] leading-relaxed">
+                      Enables automated absent alerts, payment receipts, and fee reminder messages on WhatsApp.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* 3. Monthly Fees & Notes */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-[var(--card-border)]/60">
+                <span className="size-5 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] text-xs font-bold flex items-center justify-center">
+                  3
+                </span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text)]">
+                  Monthly Fees & Notes
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fee" className="text-xs font-bold text-[var(--text)]">
+                    Monthly Tuition Fee (₹) <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <div className="relative flex rounded-[12px] border border-[var(--card-border)] focus-within:ring-2 focus-within:ring-[var(--primary)] overflow-hidden bg-white shadow-2xs">
+                    <div className="flex items-center px-3 bg-[var(--primary-soft)] text-[var(--text-secondary)] font-bold text-sm border-r border-[var(--card-border)] select-none">
+                      ₹
+                    </div>
+                    <Input
+                      id="fee"
+                      type="number"
+                      min="0"
+                      step="50"
+                      placeholder="1000"
+                      value={feeInput}
+                      onChange={(e) => setFeeInput(e.target.value)}
+                      className="h-11 sm:h-12 border-0 text-sm sm:text-base rounded-none focus-visible:ring-0"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="fee_due_day" className="text-xs font-bold text-[var(--text)]">
+                    Fee Due Day of Month (1–28) <span className="text-[var(--attention-text)]">*</span>
+                  </Label>
+                  <Input
+                    id="fee_due_day"
+                    type="number"
+                    min="1"
+                    max="28"
+                    step="1"
+                    placeholder="5"
+                    value={feeDueDayInput}
+                    onChange={(e) => setFeeDueDayInput(e.target.value)}
+                    className="h-11 sm:h-12 text-sm sm:text-base rounded-[12px] border-[var(--card-border)] focus-visible:ring-[var(--primary)]"
+                    disabled={loading}
+                  />
+                  <p className="text-[11px] text-[var(--text-secondary)]">
+                    Default: 5th of each calendar month.
                   </p>
                 </div>
-              </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="text-xs font-bold text-[var(--text)]">
+                  Notes / Special Instructions (Optional)
+                </Label>
+                <textarea
+                  id="notes"
+                  rows={2}
+                  placeholder="e.g. Sibling concession, transport route, or guardian notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  disabled={loading}
+                  className="w-full p-3 text-xs sm:text-sm rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-shadow shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Group 3: Fees */}
-          <div className="space-y-4 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--card-border)]/50 pb-1.5">
-              3. Monthly Fees
-            </h3>
-
-            <div className="space-y-1.5 max-w-sm">
-              <Label htmlFor="fee" className="text-xs font-bold text-[var(--text)]">
-                Monthly Fee (₹) *
-              </Label>
-              <Input
-                id="fee"
-                type="number"
-                min="0"
-                step="50"
-                placeholder="1000"
-                value={fee}
-                onChange={(e) => setFee(Number(e.target.value))}
-                className="h-12 text-base rounded-[12px] border-[var(--card-border)]"
-                disabled={loading}
-              />
+          {/* Sticky Footer (Always Visible on Screen) */}
+          <div className="px-5 py-3.5 sm:px-7 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+            <div className="flex items-center justify-between gap-3 w-full">
+              <div className="hidden sm:block text-[11px] text-[var(--text-secondary)] font-medium">
+                <span className="text-[var(--attention-text)] font-bold">*</span> Required fields
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                  className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="student-form"
+                  disabled={loading}
+                  className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : isEditing ? 'Update Student' : 'Save Student'}
+                </Button>
+              </div>
             </div>
           </div>
-
-          <DialogFooter className="pt-4 border-t border-[var(--card-border)]/50 gap-3 flex flex-row justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-              className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm cursor-pointer shadow-xs"
-            >
-              {loading ? 'Saving...' : isEditing ? 'Update Student' : 'Save Student'}
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

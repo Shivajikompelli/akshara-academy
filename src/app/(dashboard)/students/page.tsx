@@ -20,7 +20,10 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { CLASS_OPTIONS, type Student } from '@/types/database'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { toast } from 'sonner'
+
+const PAGE_SIZE = 50
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
@@ -31,6 +34,7 @@ export default function StudentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClass, setSelectedClass] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // Modals state
   const [formOpen, setFormOpen] = useState(false)
@@ -140,6 +144,11 @@ export default function StudentsPage() {
       })
       .sort((a, b) => a.full_name.localeCompare(b.full_name))
   }, [students, statusFilter, selectedClass, searchQuery])
+
+  const paginatedStudents = useMemo(
+    () => filteredStudents.slice(0, visibleCount),
+    [filteredStudents, visibleCount]
+  )
 
   // Counts
   const activeCount = useMemo(
@@ -256,7 +265,10 @@ export default function StudentsPage() {
             type="text"
             placeholder="Search student, school, parent, phone..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setVisibleCount(PAGE_SIZE)
+            }}
             className="w-full h-11 sm:h-12 pl-10 pr-4 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
           />
         </div>
@@ -269,7 +281,10 @@ export default function StudentsPage() {
               id="student-status-filter"
               aria-label="Filter by Status"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
+                setVisibleCount(PAGE_SIZE)
+              }}
               className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
               <option value="active">Status: Active ({activeCount})</option>
@@ -285,7 +300,10 @@ export default function StudentsPage() {
               id="class-filter"
               aria-label="Filter by Class"
               value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
+              onChange={(e) => {
+                setSelectedClass(e.target.value)
+                setVisibleCount(PAGE_SIZE)
+              }}
               className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
             >
               <option value="all">Class: All Classes</option>
@@ -323,6 +341,7 @@ export default function StudentsPage() {
                   setSearchQuery('')
                   setSelectedClass('all')
                   setStatusFilter('all')
+                  setVisibleCount(PAGE_SIZE)
                 }}
                 className="min-h-[44px] px-5 rounded-[12px] border border-[var(--card-border)] bg-white text-sm font-bold text-[var(--primary)] hover:bg-[var(--primary-soft)] cursor-pointer"
               >
@@ -341,7 +360,7 @@ export default function StudentsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredStudents.map((student) => (
+          {paginatedStudents.map((student) => (
             <div
               key={student.id}
               onClick={() => handleOpenDetails(student)}
@@ -427,7 +446,7 @@ export default function StudentsPage() {
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(student)}
-                    className="min-h-[40px] px-3.5 rounded-[12px] text-xs font-bold border border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                    className="min-h-[44px] px-3.5 rounded-[12px] text-xs font-bold border border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                   >
                     <Edit className="size-3.5" />
                     <span>Edit</span>
@@ -436,7 +455,7 @@ export default function StudentsPage() {
                   <button
                     type="button"
                     onClick={() => handleOpenStatusDialog(student)}
-                    className={`min-h-[40px] px-3 rounded-[12px] text-xs font-bold cursor-pointer transition-colors ${
+                    className={`min-h-[44px] px-3 rounded-[12px] text-xs font-bold cursor-pointer transition-colors ${
                       student.status === 'active'
                         ? 'text-[var(--text-secondary)] hover:text-[var(--attention-text)] hover:bg-[var(--attention-bg)]'
                         : 'text-[var(--present-text)] hover:bg-[var(--present-bg)]'
@@ -458,6 +477,33 @@ export default function StudentsPage() {
               </div>
             </div>
           ))}
+
+          {filteredStudents.length > visibleCount && (
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white rounded-[20px] border border-[var(--card-border)]/70 p-4 shadow-2xs">
+              <span className="text-sm font-normal text-[var(--text-secondary)]">
+                Showing <strong className="font-bold text-[var(--text)]">{paginatedStudents.length}</strong> of{' '}
+                <strong className="font-bold text-[var(--text)]">{filteredStudents.length}</strong> students
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="min-h-[44px] px-5 rounded-[12px] border border-[var(--card-border)] bg-white hover:bg-[var(--primary-soft)] text-sm font-bold text-[var(--primary)] cursor-pointer transition-colors flex-1 sm:flex-initial"
+                >
+                  Show next {Math.min(PAGE_SIZE, filteredStudents.length - visibleCount)}
+                </button>
+                {filteredStudents.length - visibleCount > PAGE_SIZE && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount(filteredStudents.length)}
+                    className="min-h-[44px] px-4 rounded-[12px] text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] cursor-pointer transition-colors"
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -470,21 +516,25 @@ export default function StudentsPage() {
       />
 
       {/* Add / Edit Sheet / Dialog */}
-      <StudentFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        studentToEdit={editingStudent}
-        onSaved={fetchStudents}
-      />
+      <ErrorBoundary fallbackTitle="Student Form Error">
+        <StudentFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          studentToEdit={editingStudent}
+          onSaved={fetchStudents}
+        />
+      </ErrorBoundary>
 
       {/* Deactivate / Reactivate Confirm Dialog */}
-      <StatusConfirmDialog
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        student={studentForStatusChange}
-        loading={statusChangeLoading}
-        onConfirm={handleConfirmStatusChange}
-      />
+      <ErrorBoundary fallbackTitle="Student Status Dialog Error">
+        <StatusConfirmDialog
+          open={statusDialogOpen}
+          onOpenChange={setStatusDialogOpen}
+          student={studentForStatusChange}
+          loading={statusChangeLoading}
+          onConfirm={handleConfirmStatusChange}
+        />
+      </ErrorBoundary>
     </div>
   )
 }

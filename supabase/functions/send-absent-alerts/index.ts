@@ -1,10 +1,43 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const ALLOWED_ORIGINS = new Set([
+  Deno.env.get('ALLOWED_ORIGIN') || 'https://akshara-academy-eta.vercel.app',
+  'http://localhost:3000',
+])
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || ''
+  const allowOrigin = ALLOWED_ORIGINS.has(origin)
+    ? origin
+    : 'https://akshara-academy-eta.vercel.app'
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  }
+}
+
+function isAuthorizedEdgeUser(user: {
+  email?: string | null
+  email_confirmed_at?: string | null
+  app_metadata?: Record<string, unknown>
+} | null): boolean {
+  if (!user || !user.email) return false
+  const appRole = user.app_metadata?.role
+  if (appRole === 'blocked' || appRole === 'disabled') return false
+
+  const rawAllowlist = Deno.env.get('ADMIN_ALLOWED_EMAILS') || ''
+  const allowedEmails = rawAllowlist
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (allowedEmails.length > 0 && !allowedEmails.includes(user.email.toLowerCase())) {
+    return false
+  }
+  return true
 }
 
 function formatDate(dateStr: string): string {
@@ -22,6 +55,8 @@ function formatDate(dateStr: string): string {
 }
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -38,7 +73,7 @@ serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || supabaseAnonKey
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -49,9 +84,17 @@ serve(async (req: Request) => {
       error: userError,
     } = await userClient.auth.getUser()
 
-    if (userError || !user) {
+    if (userError || !user || !isAuthorizedEdgeUser(user)) {
       return new Response(JSON.stringify({ error: 'Unauthorized: invalid or expired session' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!supabaseServiceKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY is missing in Edge Function runtime')
+      return new Response(JSON.stringify({ error: 'An internal server error occurred.' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -315,8 +358,7 @@ serve(async (req: Request) => {
     )
   } catch (err: unknown) {
     console.error('Edge Function unhandled error:', err)
-    const message = err instanceof Error ? err.message : 'Internal Server Error'
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: 'An internal server error occurred.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

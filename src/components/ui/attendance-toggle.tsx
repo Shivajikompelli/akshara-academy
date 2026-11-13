@@ -22,7 +22,7 @@ export function AttendanceToggle({
       onClick={onToggle}
       disabled={disabled}
       aria-label={`Mark as ${isPresent ? 'absent' : 'present'}`}
-      className={`min-h-[44px] min-w-[108px] px-3.5 py-2 rounded-[12px] font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xs ${
+      className={`min-h-[44px] min-w-[96px] sm:min-w-[108px] px-2.5 sm:px-3.5 py-2 rounded-[12px] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xs shrink-0 ${
         isPresent
           ? 'bg-[#047857] text-white hover:bg-[#036246]'
           : 'bg-[#FFE0BD] text-[#9A4A00] border border-[#FDBA74]/50 hover:bg-[#FFD7A8]'
@@ -30,15 +30,15 @@ export function AttendanceToggle({
     >
       {isPresent ? (
         <>
-          <div className="size-5 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
-            <Check className="size-3.5 stroke-[3]" />
+          <div className="size-4 sm:size-5 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
+            <Check className="size-3 sm:size-3.5 stroke-[3]" />
           </div>
           <span>Present</span>
         </>
       ) : (
         <>
-          <div className="size-5 rounded-full bg-[#9A4A00]/15 text-[#9A4A00] flex items-center justify-center shrink-0">
-            <X className="size-3.5 stroke-[3]" />
+          <div className="size-4 sm:size-5 rounded-full bg-[#9A4A00]/15 text-[#9A4A00] flex items-center justify-center shrink-0">
+            <X className="size-3 sm:size-3.5 stroke-[3]" />
           </div>
           <span>Absent</span>
         </>

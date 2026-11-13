@@ -15,14 +15,24 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Calendar, 
+  Calendar,
+  FileSpreadsheet,
 } from 'lucide-react'
-import { formatCurrency, formatDate, formatPeriod } from '@/lib/formatters'
+import {
+  formatCurrency,
+  formatDate,
+  formatPeriod,
+  getTodayIST,
+  getCurrentMonthIST,
+  formatYYYYMMDD,
+} from '@/lib/formatters'
 import { RecordPaymentDialog } from '@/components/fees/record-payment-dialog'
 import { PaymentHistoryDialog } from '@/components/fees/payment-history-dialog'
 import { SendFeeRemindersDialog } from '@/components/fees/send-fee-reminders-dialog'
+import { ExportBalanceSheetDialog } from '@/components/fees/export-balance-sheet-dialog'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { InitialsAvatar } from '@/components/ui/initials-avatar'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { CLASS_OPTIONS, type FeeSummaryRow } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -48,10 +58,19 @@ function FeeRowMenu({
         setOpen(false)
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
     if (open) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open])
 
   return (
@@ -63,6 +82,8 @@ function FeeRowMenu({
           setOpen((prev) => !prev)
         }}
         aria-label="Fee actions menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className="size-11 rounded-[12px] border border-[var(--card-border)] bg-white text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
       >
         <MoreVertical className="size-4.5" />
@@ -118,6 +139,93 @@ function FeeRowMenu({
   )
 }
 
+const PAGE_SIZE = 50
+
+function getMonthDateRange(monthStr: string): { start: string; endExclusive: string } {
+  const [y, m] = monthStr.split('-').map(Number)
+  const start = `${y}-${String(m).padStart(2, '0')}-01`
+  const nextDt = new Date(y, m, 1)
+  const endExclusive = `${nextDt.getFullYear()}-${String(nextDt.getMonth() + 1).padStart(2, '0')}-01`
+  return { start, endExclusive }
+}
+
+async function queryEnrichedFees(
+  selectedMonth: string,
+  viewAllMonths: boolean
+): Promise<FeeSummaryRow[]> {
+  const supabase = createClient()
+  let summaryQuery = supabase.from('fee_summary').select('*')
+  if (!viewAllMonths && selectedMonth) {
+    const { start, endExclusive } = getMonthDateRange(selectedMonth)
+    summaryQuery = summaryQuery.gte('period', start).lt('period', endExclusive)
+  } else {
+    summaryQuery = summaryQuery.limit(5000)
+  }
+
+  const { data: summaryData, error: summaryError } = await summaryQuery
+  if (summaryError) throw summaryError
+
+  const { data: studentsData, error: studentsError } = await supabase
+    .from('students')
+    .select('id, class_level, parent_name, phone')
+
+  if (studentsError) throw studentsError
+
+  const studentsMap = new Map<string, { class_level: string; parent_name: string; phone: string }>()
+  ;(studentsData || []).forEach((s) => {
+    studentsMap.set(s.id, {
+      class_level: s.class_level,
+      parent_name: s.parent_name,
+      phone: s.phone,
+    })
+  })
+
+  const feeIds = (summaryData || []).map((r) => r.fee_id).filter(Boolean)
+  const remindersMap = new Map<string, { count: number; lastDate: string | null }>()
+
+  if (feeIds.length > 0) {
+    const { data: reminderLogs } = await supabase
+      .from('message_log')
+      .select('fee_id, status, related_date, created_at')
+      .eq('kind', 'fee_reminder')
+      .neq('template_name', 'payment_receipt_v1')
+      .neq('status', 'failed')
+      .in('fee_id', feeIds)
+
+    ;(reminderLogs || []).forEach((r) => {
+      if (!r.fee_id) return
+      const prev = remindersMap.get(r.fee_id) || { count: 0, lastDate: null }
+      prev.count += 1
+      const dateVal = r.related_date || (r.created_at ? r.created_at.split('T')[0] : null)
+      if (!prev.lastDate || (dateVal && dateVal > prev.lastDate)) {
+        prev.lastDate = dateVal
+      }
+      remindersMap.set(r.fee_id, prev)
+    })
+  }
+
+  return (summaryData || []).map((row) => {
+    const studentInfo = studentsMap.get(row.student_id)
+    const reminderInfo = remindersMap.get(row.fee_id)
+    return {
+      fee_id: row.fee_id,
+      student_id: row.student_id,
+      full_name: row.full_name,
+      period: row.period,
+      amount_due: Number(row.amount_due) || 0,
+      due_date: row.due_date,
+      amount_paid: Number(row.amount_paid) || 0,
+      balance: Number(row.balance) || 0,
+      status: row.status as 'paid' | 'partial' | 'pending' | 'overdue',
+      class_level: studentInfo?.class_level,
+      parent_name: studentInfo?.parent_name,
+      phone: studentInfo?.phone,
+      reminders_sent: reminderInfo?.count || 0,
+      last_reminder_date: reminderInfo?.lastDate || null,
+    }
+  })
+}
+
 export default function FeesPage() {
   const [fees, setFees] = useState<FeeSummaryRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,22 +234,7 @@ export default function FeesPage() {
 
   // Month Controls (default current month)
   const [selectedMonth, setSelectedMonth] = useState<string>('')
-
-  useEffect(() => {
-    let ignore = false
-    const timer = setTimeout(() => {
-      if (ignore) return
-      const now = new Date()
-      const currentYear = now.getFullYear()
-      const currentMonth = String(now.getMonth() + 1).padStart(2, '0')
-      setTodayStr(now.toISOString().split('T')[0])
-      setSelectedMonth(`${currentYear}-${currentMonth}`)
-    }, 0)
-    return () => {
-      ignore = true
-      clearTimeout(timer)
-    }
-  }, [])
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // Filters & Search: Tabs: All / Pending / Paid, with an Overdue filter chip
   const [statusTab, setStatusTab] = useState<'all' | 'pending' | 'paid'>('all')
@@ -150,6 +243,28 @@ export default function FeesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewAllMonths, setViewAllMonths] = useState(false)
 
+  useEffect(() => {
+    let ignore = false
+    const timer = setTimeout(() => {
+      if (ignore) return
+      setTodayStr(getTodayIST())
+      setSelectedMonth(getCurrentMonthIST())
+
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('filter') === 'overdue') {
+          setOverdueChipActive(true)
+          setStatusTab('all')
+          setViewAllMonths(true)
+        }
+      }
+    }, 0)
+    return () => {
+      ignore = true
+      clearTimeout(timer)
+    }
+  }, [])
+
   // Dialog states
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
@@ -157,7 +272,14 @@ export default function FeesPage() {
 
   // Reminder Dialog states
   const [remindersDialogOpen, setRemindersDialogOpen] = useState(false)
-  const [selectedSingleStudent, setSelectedSingleStudent] = useState<{ id: string; name: string } | null>(null)
+  const [selectedSingleStudent, setSelectedSingleStudent] = useState<{
+    id: string
+    name: string
+    feeId?: string
+  } | null>(null)
+
+  // Balance Sheet & Export Dialog state
+  const [balanceSheetOpen, setBalanceSheetOpen] = useState(false)
 
   // Fee Actions menu state
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
@@ -169,10 +291,19 @@ export default function FeesPage() {
         setActionsMenuOpen(false)
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setActionsMenuOpen(false)
+      }
+    }
     if (actionsMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [actionsMenuOpen])
 
 
@@ -185,6 +316,7 @@ export default function FeesPage() {
     const y = dt.getFullYear()
     const m = String(dt.getMonth() + 1).padStart(2, '0')
     setSelectedMonth(`${y}-${m}`)
+    setVisibleCount(PAGE_SIZE)
   }
 
   // Calculate days overdue for a given due_date
@@ -195,73 +327,12 @@ export default function FeesPage() {
     return Math.max(0, Math.floor((nowTime - dueTime) / (1000 * 60 * 60 * 24)))
   }, [todayStr])
 
-  // Fetch fees from fee_summary view and enrich with student class, phone, and reminder counts
+  // Fetch fees from fee_summary view (filtered server-side by month unless viewing all months)
   const fetchFeesData = useCallback(async () => {
+    if (!selectedMonth && !viewAllMonths) return
     setLoading(true)
-    const supabase = createClient()
-
     try {
-      const { data: summaryData, error: summaryError } = await supabase
-        .from('fee_summary')
-        .select('*')
-
-      if (summaryError) throw summaryError
-
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('id, class_level, parent_name, phone')
-
-      if (studentsError) throw studentsError
-
-      const studentsMap = new Map<string, { class_level: string; parent_name: string; phone: string }>()
-      ;(studentsData || []).forEach((s) => {
-        studentsMap.set(s.id, {
-          class_level: s.class_level,
-          parent_name: s.parent_name,
-          phone: s.phone,
-        })
-      })
-
-      const { data: reminderLogs } = await supabase
-        .from('message_log')
-        .select('fee_id, status, related_date, created_at')
-        .eq('kind', 'fee_reminder')
-        .neq('status', 'failed')
-        .not('fee_id', 'is', null)
-
-      const remindersMap = new Map<string, { count: number; lastDate: string | null }>()
-      ;(reminderLogs || []).forEach((r) => {
-        if (!r.fee_id) return
-        const prev = remindersMap.get(r.fee_id) || { count: 0, lastDate: null }
-        prev.count += 1
-        const dateVal = r.related_date || (r.created_at ? r.created_at.split('T')[0] : null)
-        if (!prev.lastDate || (dateVal && dateVal > prev.lastDate)) {
-          prev.lastDate = dateVal
-        }
-        remindersMap.set(r.fee_id, prev)
-      })
-
-      const enriched: FeeSummaryRow[] = (summaryData || []).map((row) => {
-        const studentInfo = studentsMap.get(row.student_id)
-        const reminderInfo = remindersMap.get(row.fee_id)
-        return {
-          fee_id: row.fee_id,
-          student_id: row.student_id,
-          full_name: row.full_name,
-          period: row.period,
-          amount_due: Number(row.amount_due) || 0,
-          due_date: row.due_date,
-          amount_paid: Number(row.amount_paid) || 0,
-          balance: Number(row.balance) || 0,
-          status: row.status as 'paid' | 'partial' | 'pending' | 'overdue',
-          class_level: studentInfo?.class_level,
-          parent_name: studentInfo?.parent_name,
-          phone: studentInfo?.phone,
-          reminders_sent: reminderInfo?.count || 0,
-          last_reminder_date: reminderInfo?.lastDate || null,
-        }
-      })
-
+      const enriched = await queryEnrichedFees(selectedMonth, viewAllMonths)
       setFees(enriched)
     } catch (err: unknown) {
       console.error('Failed to load fees:', err)
@@ -270,76 +341,16 @@ export default function FeesPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedMonth, viewAllMonths])
 
   useEffect(() => {
+    if (!selectedMonth && !viewAllMonths) return
     let ignore = false
 
-    async function loadFees() {
-      const supabase = createClient()
-
+    async function load() {
+      setLoading(true)
       try {
-        const { data: summaryData, error: summaryError } = await supabase
-          .from('fee_summary')
-          .select('*')
-
-        if (summaryError) throw summaryError
-
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('students')
-          .select('id, class_level, parent_name, phone')
-
-        if (studentsError) throw studentsError
-
-        const studentsMap = new Map<string, { class_level: string; parent_name: string; phone: string }>()
-        ;(studentsData || []).forEach((s) => {
-          studentsMap.set(s.id, {
-            class_level: s.class_level,
-            parent_name: s.parent_name,
-            phone: s.phone,
-          })
-        })
-
-        const { data: reminderLogs } = await supabase
-          .from('message_log')
-          .select('fee_id, status, related_date, created_at')
-          .eq('kind', 'fee_reminder')
-          .neq('status', 'failed')
-          .not('fee_id', 'is', null)
-
-        const remindersMap = new Map<string, { count: number; lastDate: string | null }>()
-        ;(reminderLogs || []).forEach((r) => {
-          if (!r.fee_id) return
-          const prev = remindersMap.get(r.fee_id) || { count: 0, lastDate: null }
-          prev.count += 1
-          const dateVal = r.related_date || (r.created_at ? r.created_at.split('T')[0] : null)
-          if (!prev.lastDate || (dateVal && dateVal > prev.lastDate)) {
-            prev.lastDate = dateVal
-          }
-          remindersMap.set(r.fee_id, prev)
-        })
-
-        const enriched: FeeSummaryRow[] = (summaryData || []).map((row) => {
-          const studentInfo = studentsMap.get(row.student_id)
-          const reminderInfo = remindersMap.get(row.fee_id)
-          return {
-            fee_id: row.fee_id,
-            student_id: row.student_id,
-            full_name: row.full_name,
-            period: row.period,
-            amount_due: Number(row.amount_due) || 0,
-            due_date: row.due_date,
-            amount_paid: Number(row.amount_paid) || 0,
-            balance: Number(row.balance) || 0,
-            status: row.status as 'paid' | 'partial' | 'pending' | 'overdue',
-            class_level: studentInfo?.class_level,
-            parent_name: studentInfo?.parent_name,
-            phone: studentInfo?.phone,
-            reminders_sent: reminderInfo?.count || 0,
-            last_reminder_date: reminderInfo?.lastDate || null,
-          }
-        })
-
+        const enriched = await queryEnrichedFees(selectedMonth, viewAllMonths)
         if (!ignore) {
           setFees(enriched)
         }
@@ -356,12 +367,11 @@ export default function FeesPage() {
       }
     }
 
-    void loadFees()
-
+    void load()
     return () => {
       ignore = true
     }
-  }, [])
+  }, [selectedMonth, viewAllMonths])
 
   // "Generate fees for this month" action
   async function handleGenerateMonthlyFees() {
@@ -388,7 +398,7 @@ export default function FeesPage() {
         if (activeStudents && activeStudents.length > 0) {
           const rows = activeStudents.map((s) => {
             const dueDay = Math.min(28, Math.max(1, s.fee_due_day || 5))
-            const due = new Date(y, m - 1, dueDay).toISOString().split('T')[0]
+            const due = formatYYYYMMDD(y, m, dueDay)
             return {
               student_id: s.id,
               period: targetMonthDate,
@@ -457,11 +467,14 @@ export default function FeesPage() {
     }
   }, [monthFees])
 
+  const activeScopeFees = useMemo(
+    () => (viewAllMonths ? fees : monthFees),
+    [fees, monthFees, viewAllMonths]
+  )
+
   // Filtered & Sorted Fees List (Default sort: overdue first, longest overdue at top)
   const filteredFees = useMemo(() => {
-    const baseList = viewAllMonths ? fees : monthFees
-
-    return baseList
+    return activeScopeFees
       .filter((fee) => {
         if (overdueChipActive && fee.status !== 'overdue') {
           return false
@@ -492,7 +505,12 @@ export default function FeesPage() {
         }
         return b.balance - a.balance
       })
-  }, [fees, monthFees, viewAllMonths, statusTab, overdueChipActive, classFilter, searchQuery, getDaysOverdue])
+  }, [activeScopeFees, statusTab, overdueChipActive, classFilter, searchQuery, getDaysOverdue])
+
+  const paginatedFees = useMemo(
+    () => filteredFees.slice(0, visibleCount),
+    [filteredFees, visibleCount]
+  )
 
   function handleOpenRecordPayment(fee: FeeSummaryRow) {
     setSelectedFee(fee)
@@ -505,7 +523,7 @@ export default function FeesPage() {
   }
 
   function handleOpenSingleReminder(fee: FeeSummaryRow) {
-    setSelectedSingleStudent({ id: fee.student_id, name: fee.full_name })
+    setSelectedSingleStudent({ id: fee.student_id, name: fee.full_name, feeId: fee.fee_id })
     setRemindersDialogOpen(true)
   }
 
@@ -535,6 +553,8 @@ export default function FeesPage() {
             <button
               type="button"
               onClick={() => setActionsMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={actionsMenuOpen}
               className="min-h-[40px] sm:min-h-[44px] px-3 sm:px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-xs transition-colors shrink-0"
             >
               <span>Fee Actions</span>
@@ -542,7 +562,20 @@ export default function FeesPage() {
             </button>
 
             {actionsMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-60 rounded-[16px] bg-white border border-[var(--card-border)] shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-1.5 w-64 rounded-[16px] bg-white border border-[var(--card-border)] shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionsMenuOpen(false)
+                    setBalanceSheetOpen(true)
+                  }}
+                  disabled={loading}
+                  className="w-full min-h-[44px] px-3 rounded-[10px] text-left text-sm font-semibold text-[var(--text)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)] flex items-center gap-2.5 cursor-pointer transition-colors"
+                >
+                  <FileSpreadsheet className="size-4 text-[var(--primary)] shrink-0" />
+                  <span>Balance sheet & export</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -609,7 +642,10 @@ export default function FeesPage() {
           <div className="shrink-0">
             <button
               type="button"
-              onClick={() => setViewAllMonths(!viewAllMonths)}
+              onClick={() => {
+                setViewAllMonths(!viewAllMonths)
+                setVisibleCount(PAGE_SIZE)
+              }}
               className={`text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer ${
                 viewAllMonths
                   ? 'bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--primary)]/30'
@@ -694,7 +730,10 @@ export default function FeesPage() {
               type="text"
               placeholder="Search student or phone..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setVisibleCount(PAGE_SIZE)
+              }}
               className="w-full h-11 pl-9 pr-3 rounded-[12px] border border-[var(--card-border)] bg-white text-sm text-[var(--text)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] shadow-2xs"
             />
           </div>
@@ -716,13 +755,14 @@ export default function FeesPage() {
                     setOverdueChipActive(false)
                     setStatusTab(val as 'all' | 'pending' | 'paid')
                   }
+                  setVisibleCount(PAGE_SIZE)
                 }}
                 className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
               >
-                <option value="all">Status: All ({fees.length})</option>
-                <option value="pending">Status: Pending ({fees.filter((f) => f.status !== 'paid').length})</option>
-                <option value="paid">Status: Paid ({fees.filter((f) => f.status === 'paid').length})</option>
-                <option value="overdue">Status: Overdue ({fees.filter((f) => f.status === 'overdue').length})</option>
+                <option value="all">Status: All ({activeScopeFees.length})</option>
+                <option value="pending">Status: Pending ({activeScopeFees.filter((f) => f.status !== 'paid').length})</option>
+                <option value="paid">Status: Paid ({activeScopeFees.filter((f) => f.status === 'paid').length})</option>
+                <option value="overdue">Status: Overdue ({activeScopeFees.filter((f) => f.status === 'overdue').length})</option>
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none" />
             </div>
@@ -732,7 +772,10 @@ export default function FeesPage() {
               <select
                 value={classFilter}
                 aria-label="Filter by Class"
-                onChange={(e) => setClassFilter(e.target.value)}
+                onChange={(e) => {
+                  setClassFilter(e.target.value)
+                  setVisibleCount(PAGE_SIZE)
+                }}
                 className="w-full min-h-[44px] pl-3 pr-8 rounded-[12px] border border-[var(--card-border)] bg-white text-xs sm:text-sm font-semibold text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer shadow-xs appearance-none truncate transition-colors"
               >
                 <option value="all">Class: All Classes</option>
@@ -764,7 +807,7 @@ export default function FeesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredFees.map((fee) => {
+          {paginatedFees.map((fee) => {
             const isUnpaidOrPartial = fee.status !== 'paid'
             const days = getDaysOverdue(fee.due_date)
 
@@ -772,29 +815,41 @@ export default function FeesPage() {
               <div
                 key={fee.fee_id}
                 onClick={() => handleOpenHistory(fee)}
-                className="bg-white p-4 sm:p-5 rounded-[20px] border border-[var(--card-border)]/70 shadow-2xs hover:border-[var(--primary)]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
+                className="bg-white p-3.5 sm:p-5 rounded-[20px] border border-[var(--card-border)]/70 shadow-2xs hover:border-[var(--primary)]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 cursor-pointer"
               >
-                {/* Left: Avatar + Student info */}
-                <div className="flex items-center gap-3.5 min-w-0 md:w-1/3">
-                  <InitialsAvatar name={fee.full_name} size="md" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-[var(--text)] truncate">
-                        {fee.full_name}
-                      </span>
+                {/* Left (Mobile Top): Avatar + Student info + Mobile Menu */}
+                <div className="flex items-center justify-between md:justify-start gap-3 min-w-0 md:w-1/3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <InitialsAvatar name={fee.full_name} size="md" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm sm:text-base text-[var(--text)] truncate">
+                          {fee.full_name}
+                        </span>
+                      </div>
+                      <div className="text-xs sm:text-sm font-normal text-[var(--text-secondary)] mt-0.5 truncate flex items-center gap-1.5">
+                        <span className="font-semibold text-[var(--text)]">{fee.class_level || 'Class -'}</span>
+                        <span className="opacity-40">·</span>
+                        <span className="font-mono text-xs">{fee.phone || 'No phone'}</span>
+                      </div>
                     </div>
-                    <div className="text-sm font-normal text-[var(--text-secondary)] mt-0.5 truncate flex items-center gap-1.5">
-                      <span>{fee.class_level || 'Class -'}</span>
-                      <span className="opacity-40">·</span>
-                      <span className="font-mono text-xs">{fee.phone || 'No phone'}</span>
-                    </div>
+                  </div>
+
+                  {/* On mobile (<768px), 3-dot menu at top right of card */}
+                  <div className="block md:hidden shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <FeeRowMenu
+                      fee={fee}
+                      onRecordPayment={isUnpaidOrPartial ? () => handleOpenRecordPayment(fee) : undefined}
+                      onSendReminder={() => handleOpenSingleReminder(fee)}
+                      onViewHistory={() => handleOpenHistory(fee)}
+                    />
                   </div>
                 </div>
 
                 {/* Middle: Amount, Balance & Due Date */}
-                <div className="flex items-center justify-between sm:justify-start gap-6 text-sm md:w-1/3">
+                <div className="grid grid-cols-2 md:flex md:items-center md:justify-start gap-3 sm:gap-6 text-xs sm:text-sm py-2.5 md:py-0 border-y md:border-y-0 border-[var(--card-border)]/40 md:w-1/3">
                   <div>
-                    <span className="text-xs font-normal text-[var(--text-secondary)] block">Due</span>
+                    <span className="text-[11px] sm:text-xs font-normal text-[var(--text-secondary)] block">Due / Balance</span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="font-semibold text-[var(--text)]">
                         {formatCurrency(fee.amount_due)}
@@ -807,11 +862,11 @@ export default function FeesPage() {
                   </div>
 
                   <div>
-                    <span className="text-xs font-normal text-[var(--text-secondary)] block">Due Date</span>
+                    <span className="text-[11px] sm:text-xs font-normal text-[var(--text-secondary)] block">Due Date</span>
                     <span className="font-medium text-[var(--text)] mt-0.5 block">
                       {formatDate(fee.due_date)}
                     </span>
-                    <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1 mt-0.5">
+                    <div className="text-[10px] sm:text-xs text-[var(--text-secondary)] flex items-center gap-1 mt-0.5">
                       <BellRing className="size-3 text-[var(--text-secondary)]" />
                       <span>Reminders: {fee.reminders_sent || 0}/2</span>
                     </div>
@@ -820,7 +875,7 @@ export default function FeesPage() {
 
                 {/* Right: Status badge & Actions */}
                 <div
-                  className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--card-border)]/40 md:w-1/3"
+                  className="flex items-center justify-between md:justify-end gap-2.5 sm:gap-3 shrink-0 md:w-1/3"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <StatusBadge status={fee.status} daysOverdue={days} />
@@ -831,52 +886,100 @@ export default function FeesPage() {
                       <button
                         type="button"
                         onClick={() => handleOpenRecordPayment(fee)}
-                        className="min-h-[44px] px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                        className="min-h-[40px] sm:min-h-[44px] px-3.5 sm:px-4 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors active:scale-[0.98]"
                       >
                         <CreditCard className="size-4" />
                         <span>Record payment</span>
                       </button>
                     )}
 
-                    {/* Row Menu: "Send reminder" and history */}
-                    <FeeRowMenu
-                      fee={fee}
-                      onRecordPayment={isUnpaidOrPartial ? () => handleOpenRecordPayment(fee) : undefined}
-                      onSendReminder={() => handleOpenSingleReminder(fee)}
-                      onViewHistory={() => handleOpenHistory(fee)}
-                    />
+                    {/* On desktop (>=768px), show 3-dot menu beside action button */}
+                    <div className="hidden md:block">
+                      <FeeRowMenu
+                        fee={fee}
+                        onRecordPayment={isUnpaidOrPartial ? () => handleOpenRecordPayment(fee) : undefined}
+                        onSendReminder={() => handleOpenSingleReminder(fee)}
+                        onViewHistory={() => handleOpenHistory(fee)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )
           })}
+
+          {filteredFees.length > visibleCount && (
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white rounded-[20px] border border-[var(--card-border)]/70 p-4 shadow-2xs">
+              <span className="text-sm font-normal text-[var(--text-secondary)]">
+                Showing <strong className="font-bold text-[var(--text)]">{paginatedFees.length}</strong> of{' '}
+                <strong className="font-bold text-[var(--text)]">{filteredFees.length}</strong> fee records
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="min-h-[44px] px-5 rounded-[12px] border border-[var(--card-border)] bg-white hover:bg-[var(--primary-soft)] text-sm font-bold text-[var(--primary)] cursor-pointer transition-colors flex-1 sm:flex-initial"
+                >
+                  Show next {Math.min(PAGE_SIZE, filteredFees.length - visibleCount)}
+                </button>
+                {filteredFees.length - visibleCount > PAGE_SIZE && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount(filteredFees.length)}
+                    className="min-h-[44px] px-4 rounded-[12px] text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] cursor-pointer transition-colors"
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Record Payment Dialog */}
-      <RecordPaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        fee={selectedFee}
-        onPaymentRecorded={fetchFeesData}
-      />
+      <ErrorBoundary fallbackTitle="Payment Form Error">
+        <RecordPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          fee={selectedFee}
+          onPaymentRecorded={fetchFeesData}
+        />
+      </ErrorBoundary>
 
       {/* Payment History & Edit Amount Dialog */}
-      <PaymentHistoryDialog
-        open={historyDialogOpen}
-        onOpenChange={setHistoryDialogOpen}
-        fee={selectedFee}
-        onFeeUpdated={fetchFeesData}
-      />
+      <ErrorBoundary fallbackTitle="Payment History Error">
+        <PaymentHistoryDialog
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+          fee={selectedFee}
+          onFeeUpdated={fetchFeesData}
+        />
+      </ErrorBoundary>
 
       {/* Scheduled Fee Reminders / Single Reminder Dialog */}
-      <SendFeeRemindersDialog
-        open={remindersDialogOpen}
-        onOpenChange={setRemindersDialogOpen}
-        onCompleted={fetchFeesData}
-        singleStudentId={selectedSingleStudent?.id}
-        singleStudentName={selectedSingleStudent?.name}
-      />
+      <ErrorBoundary fallbackTitle="Fee Reminders Error">
+        <SendFeeRemindersDialog
+          open={remindersDialogOpen}
+          onOpenChange={setRemindersDialogOpen}
+          onCompleted={fetchFeesData}
+          singleStudentId={selectedSingleStudent?.id}
+          singleStudentName={selectedSingleStudent?.name}
+          singleFeeId={selectedSingleStudent?.feeId}
+        />
+      </ErrorBoundary>
+
+      {/* Balance Sheet & Export Dialog */}
+      <ErrorBoundary fallbackTitle="Balance Sheet Error">
+        <ExportBalanceSheetDialog
+          open={balanceSheetOpen}
+          onOpenChange={setBalanceSheetOpen}
+          defaultMonth={selectedMonth}
+          defaultViewAllMonths={viewAllMonths}
+          defaultClassFilter={classFilter}
+          defaultStatusFilter={overdueChipActive ? 'overdue' : statusTab}
+        />
+      </ErrorBoundary>
     </div>
   )
 }

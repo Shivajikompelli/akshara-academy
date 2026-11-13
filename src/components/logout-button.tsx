@@ -24,8 +24,9 @@ export function LogoutButton({
     try {
       setIsLoggingOut(true)
       const supabase = createClient()
+      await fetch('/api/auth/logout', { method: 'POST' })
       await supabase.auth.signOut()
-      router.push('/login')
+      router.replace('/login')
       router.refresh()
     } catch (err) {
       console.error('Logout error:', err)

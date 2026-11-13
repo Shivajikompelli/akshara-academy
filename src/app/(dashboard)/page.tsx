@@ -15,10 +15,12 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/formatters'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 interface ClassAttendanceStatus {
   className: string
   isTaken: boolean
+  isPartial: boolean
   takenTime: string | null
   presentCount: number
   absentCount: number
@@ -56,6 +58,123 @@ function formatTimeIST(dateString: string): string {
   }
 }
 
+async function queryHomeSummaryData(currentTodayIST: string): Promise<Omit<HomeSummaryData, 'loading'>> {
+  const supabase = createClient()
+
+  // 1. Load active students
+  const { data: students, error: studentsErr } = await supabase
+    .from('students')
+    .select('id, class_level')
+    .eq('status', 'active')
+
+  if (studentsErr) throw studentsErr
+
+  const activeStudents = students || []
+  const enrolledCount = activeStudents.length
+
+  // Distinct classes sorted
+  const classMap = new Map<string, string[]>()
+  activeStudents.forEach((s) => {
+    const cls = s.class_level
+    if (!classMap.has(cls)) classMap.set(cls, [])
+    classMap.get(cls)!.push(s.id)
+  })
+
+  const sortedClasses = Array.from(classMap.keys()).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''), 10) || 0
+    const numB = parseInt(b.replace(/\D/g, ''), 10) || 0
+    return numA - numB
+  })
+
+  // 2. Load today's attendance in IST
+  const studentIds = activeStudents.map((s) => s.id)
+  const { data: attRecords, error: attErr } = await supabase
+    .from('attendance')
+    .select('student_id, status, created_at')
+    .eq('att_date', currentTodayIST)
+    .in('student_id', studentIds)
+
+  if (attErr) throw attErr
+
+  const todayAtt = attRecords || []
+  const attByStudent = new Map<string, { status: string; created_at?: string }>()
+  let presentCount = 0
+  let absentCount = 0
+
+  todayAtt.forEach((rec) => {
+    attByStudent.set(rec.student_id, {
+      status: rec.status,
+      created_at: rec.created_at,
+    })
+    if (rec.status === 'present') presentCount++
+    if (rec.status === 'absent') absentCount++
+  })
+
+  // 3. Compute per-class attendance status
+  const classesStatus: ClassAttendanceStatus[] = sortedClasses.map((cls) => {
+    const clsStudentIds = classMap.get(cls) || []
+    let pCount = 0
+    let aCount = 0
+    let recordsFound = 0
+    let latestCreatedAt: string | null = null
+
+    clsStudentIds.forEach((sid) => {
+      const rec = attByStudent.get(sid)
+      if (rec) {
+        recordsFound++
+        if (rec.status === 'present') pCount++
+        if (rec.status === 'absent') aCount++
+        if (rec.created_at) {
+          if (!latestCreatedAt || rec.created_at > latestCreatedAt) {
+            latestCreatedAt = rec.created_at
+          }
+        }
+      }
+    })
+
+    const isTaken = recordsFound > 0 && recordsFound >= clsStudentIds.length
+    const isPartial = recordsFound > 0 && recordsFound < clsStudentIds.length
+    const takenTime = latestCreatedAt ? formatTimeIST(latestCreatedAt) : null
+
+    return {
+      className: cls,
+      isTaken,
+      isPartial,
+      takenTime,
+      presentCount: pCount,
+      absentCount: aCount,
+      totalStudents: clsStudentIds.length,
+    }
+  })
+
+  // 4. Load overdue fees from fee_summary view (count distinct overdue students)
+  const { data: overdueFees, error: feesErr } = await supabase
+    .from('fee_summary')
+    .select('student_id, balance')
+    .eq('status', 'overdue')
+
+  if (feesErr) throw feesErr
+
+  const overdueStudentIds = new Set(
+    (overdueFees || []).map((row) => row.student_id).filter(Boolean)
+  )
+  const overdueCount = overdueStudentIds.size
+  const overdueBalance = (overdueFees || []).reduce(
+    (acc, row) => acc + (Number(row.balance) || 0),
+    0
+  )
+
+  return {
+    enrolledCount,
+    presentCount,
+    absentCount,
+    totalAttendanceRecords: todayAtt.length,
+    overdueCount,
+    overdueBalance,
+    classesStatus,
+  }
+}
+
 export default function HomePage() {
   const [data, setData] = useState<HomeSummaryData>({
     enrolledCount: 0,
@@ -71,133 +190,12 @@ export default function HomePage() {
   const [todayIST, setTodayIST] = useState<string>('')
   const [formattedToday, setFormattedToday] = useState<string>('')
 
-  useEffect(() => {
-    const today = getTodayIST()
-    setTodayIST(today)
-    setFormattedToday(
-      new Date().toLocaleDateString('en-IN', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'Asia/Kolkata',
-      })
-    )
-  }, [])
-
   const loadHomeData = useCallback(async (currentTodayIST: string) => {
     if (!currentTodayIST) return
-    const supabase = createClient()
-
+    setData((prev) => ({ ...prev, loading: true }))
     try {
-      // 1. Load active students
-      const { data: students, error: studentsErr } = await supabase
-        .from('students')
-        .select('id, class_level')
-        .eq('status', 'active')
-
-      if (studentsErr) throw studentsErr
-
-      const activeStudents = students || []
-      const enrolledCount = activeStudents.length
-
-      // Distinct classes sorted
-      const classMap = new Map<string, string[]>()
-      activeStudents.forEach((s) => {
-        const cls = s.class_level
-        if (!classMap.has(cls)) classMap.set(cls, [])
-        classMap.get(cls)!.push(s.id)
-      })
-
-      const sortedClasses = Array.from(classMap.keys()).sort((a, b) => {
-        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0
-        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0
-        return numA - numB
-      })
-
-      // 2. Load today's attendance in IST
-      const studentIds = activeStudents.map((s) => s.id)
-      const { data: attRecords, error: attErr } = await supabase
-        .from('attendance')
-        .select('student_id, status, created_at')
-        .eq('att_date', currentTodayIST)
-        .in('student_id', studentIds)
-
-      if (attErr) throw attErr
-
-      const todayAtt = attRecords || []
-      const attByStudent = new Map<string, { status: string; created_at?: string }>()
-      let presentCount = 0
-      let absentCount = 0
-
-      todayAtt.forEach((rec) => {
-        attByStudent.set(rec.student_id, {
-          status: rec.status,
-          created_at: rec.created_at,
-        })
-        if (rec.status === 'present') presentCount++
-        if (rec.status === 'absent') absentCount++
-      })
-
-      // 3. Compute per-class attendance status
-      const classesStatus: ClassAttendanceStatus[] = sortedClasses.map((cls) => {
-        const clsStudentIds = classMap.get(cls) || []
-        let pCount = 0
-        let aCount = 0
-        let recordsFound = 0
-        let latestCreatedAt: string | null = null
-
-        clsStudentIds.forEach((sid) => {
-          const rec = attByStudent.get(sid)
-          if (rec) {
-            recordsFound++
-            if (rec.status === 'present') pCount++
-            if (rec.status === 'absent') aCount++
-            if (rec.created_at) {
-              if (!latestCreatedAt || rec.created_at > latestCreatedAt) {
-                latestCreatedAt = rec.created_at
-              }
-            }
-          }
-        })
-
-        const isTaken = recordsFound > 0
-        const takenTime = latestCreatedAt ? formatTimeIST(latestCreatedAt) : null
-
-        return {
-          className: cls,
-          isTaken,
-          takenTime,
-          presentCount: pCount,
-          absentCount: aCount,
-          totalStudents: clsStudentIds.length,
-        }
-      })
-
-      // 4. Load overdue fees from fee_summary view
-      const { data: overdueFees, error: feesErr } = await supabase
-        .from('fee_summary')
-        .select('balance')
-        .eq('status', 'overdue')
-
-      if (feesErr) throw feesErr
-
-      const overdueCount = overdueFees?.length || 0
-      const overdueBalance = (overdueFees || []).reduce(
-        (acc, row) => acc + (Number(row.balance) || 0),
-        0
-      )
-
-      setData({
-        enrolledCount,
-        presentCount,
-        absentCount,
-        totalAttendanceRecords: todayAtt.length,
-        overdueCount,
-        overdueBalance,
-        classesStatus,
-        loading: false,
-      })
+      const summary = await queryHomeSummaryData(currentTodayIST)
+      setData({ ...summary, loading: false })
     } catch (err: unknown) {
       console.error('Failed to load home dashboard:', err)
       setData((prev) => ({ ...prev, loading: false }))
@@ -205,10 +203,39 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    if (todayIST) {
-      loadHomeData(todayIST)
+    let ignore = false
+
+    async function initHome() {
+      const today = getTodayIST()
+      const formatted = new Date().toLocaleDateString('en-IN', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata',
+      })
+      if (ignore) return
+      setTodayIST(today)
+      setFormattedToday(formatted)
+
+      try {
+        const summary = await queryHomeSummaryData(today)
+        if (!ignore) {
+          setData({ ...summary, loading: false })
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Failed to load home dashboard:', err)
+          setData((prev) => ({ ...prev, loading: false }))
+        }
+      }
     }
-  }, [todayIST, loadHomeData])
+
+    void initHome()
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const attendanceTakenToday = data.totalAttendanceRecords > 0
 
@@ -237,7 +264,11 @@ export default function HomePage() {
       </div>
 
       {/* 1. HERO CARD with purple gradient: today's date, three numbers, two actions */}
-      <AksharaCard variant="hero" className="p-4 sm:p-5 max-w-[760px]">
+      <ErrorBoundary
+        fallbackTitle="Dashboard Overview Error"
+        onReset={() => todayIST && loadHomeData(todayIST)}
+      >
+        <AksharaCard variant="hero" className="p-4 sm:p-5 max-w-[760px]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest block">
@@ -253,7 +284,7 @@ export default function HomePage() {
             <Link href="/attendance" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="w-full min-h-[40px] px-3.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
               >
                 <CalendarCheck className="size-4 stroke-[2.5]" />
                 <span className="truncate">Take attendance</span>
@@ -263,7 +294,7 @@ export default function HomePage() {
             <Link href="/fees" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="w-full min-h-[40px] px-3.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
+                className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
               >
                 <BellRing className="size-4" />
                 <span className="truncate">Fee reminders</span>
@@ -364,7 +395,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <Link href="/fees" className="shrink-0">
+          <Link href="/fees?filter=overdue" className="shrink-0">
             <button
               type="button"
               className="min-h-[44px] px-5 rounded-[12px] bg-white text-[var(--attention-text)] border border-[var(--attention)]/40 hover:bg-[var(--attention-bg)] font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
@@ -402,40 +433,49 @@ export default function HomePage() {
             data.classesStatus.map((cls) => (
               <div
                 key={cls.className}
-                className="p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-[var(--primary-soft)]/40 transition-colors"
+                className="p-3.5 sm:p-5 flex items-center justify-between gap-2.5 sm:gap-3 hover:bg-[var(--primary-soft)]/40 transition-colors"
               >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-[var(--text)]">
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="font-bold text-sm text-[var(--text)] truncate">
                       {cls.className}
                     </span>
-                    <span className="text-xs font-normal text-[var(--text-secondary)]">
-                      ({cls.totalStudents} {cls.totalStudents === 1 ? 'student' : 'students'})
+                    <span className="text-xs font-normal text-[var(--text-secondary)] shrink-0">
+                      ({cls.totalStudents})
                     </span>
                   </div>
 
                   {cls.isTaken ? (
-                    <p className="text-xs font-normal text-[var(--present-text)]">
+                    <p className="text-xs font-normal text-[var(--present-text)] truncate">
                       {cls.presentCount} present · {cls.absentCount} absent
                     </p>
+                  ) : cls.isPartial ? (
+                    <p className="text-xs font-normal text-[var(--attention-text)] truncate">
+                      {cls.presentCount + cls.absentCount} of {cls.totalStudents} recorded
+                    </p>
                   ) : (
-                    <p className="text-xs font-normal text-[var(--attention-text)]">
-                      Attendance not recorded yet for today
+                    <p className="text-xs font-normal text-[var(--attention-text)] truncate">
+                      Not recorded yet today
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                   {/* Status Badge: "Taken 9:40" or "Not taken yet" */}
                   {cls.isTaken ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/20">
+                    <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/20">
                       <CheckCircle2 className="size-3.5 stroke-[2.5]" />
-                      <span>Taken {cls.takenTime || ''}</span>
+                      <span className="truncate">Taken {cls.takenTime || ''}</span>
+                    </span>
+                  ) : cls.isPartial ? (
+                    <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
+                      <Clock className="size-3.5 stroke-[2.5]" />
+                      <span className="truncate">{cls.totalStudents - (cls.presentCount + cls.absentCount)} unsaved</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
+                    <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
                       <Clock className="size-3.5 stroke-[2.5]" />
-                      <span>Not taken yet</span>
+                      <span className="truncate">Not taken</span>
                     </span>
                   )}
 
@@ -443,7 +483,7 @@ export default function HomePage() {
                   <Link href={`/attendance?class=${encodeURIComponent(cls.className)}`}>
                     <button
                       type="button"
-                      className="min-h-[44px] px-4 rounded-[12px] font-bold text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                      className="min-h-[44px] px-3 sm:px-4 rounded-[12px] font-bold text-xs sm:text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-xs flex items-center gap-1 sm:gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                     >
                       <span>Open</span>
                       <ChevronRight className="size-4" />
@@ -455,6 +495,7 @@ export default function HomePage() {
           )}
         </div>
       </div>
+      </ErrorBoundary>
     </div>
   )
 }

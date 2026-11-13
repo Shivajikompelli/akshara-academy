@@ -21,8 +21,6 @@ import {
   AlertCircle,
   Trash2,
   Edit2,
-  CheckCircle2,
-  Clock,
   AlertTriangle,
   Calendar,
 } from 'lucide-react'
@@ -57,9 +55,13 @@ export function PaymentHistoryDialog({
   const [paymentToDelete, setPaymentToDelete] = useState<FeePayment | null>(null)
   const [deletingPayment, setDeletingPayment] = useState(false)
 
+  const feeId = fee?.fee_id
+  const studentId = fee?.student_id
+  const initialAmountDue = fee?.amount_due ?? 0
+
   // Fetch current fee payments
   const fetchPayments = useCallback(async () => {
-    if (!fee?.fee_id) return
+    if (!feeId) return
     setLoading(true)
     setErrorMsg(null)
     const supabase = createClient()
@@ -68,7 +70,7 @@ export function PaymentHistoryDialog({
       const { data, error } = await supabase
         .from('fee_payments')
         .select('*')
-        .eq('fee_id', fee.fee_id)
+        .eq('fee_id', feeId)
         .order('paid_on', { ascending: false })
 
       if (error) throw error
@@ -79,11 +81,11 @@ export function PaymentHistoryDialog({
     } finally {
       setLoading(false)
     }
-  }, [fee?.fee_id])
+  }, [feeId])
 
   // Fetch student's past fee rows (previous months)
   const fetchStudentPastFees = useCallback(async () => {
-    if (!fee?.student_id) return
+    if (!studentId) return
     setLoadingHistory(true)
     const supabase = createClient()
 
@@ -91,21 +93,21 @@ export function PaymentHistoryDialog({
       const { data, error } = await supabase
         .from('fee_summary')
         .select('*')
-        .eq('student_id', fee.student_id)
+        .eq('student_id', studentId)
         .order('period', { ascending: false })
 
       if (error) throw error
       setStudentPastFees(
-        (data || []).map((row: any) => ({
-          fee_id: row.fee_id,
-          student_id: row.student_id,
-          full_name: row.full_name,
-          period: row.period,
+        (data || []).map((row) => ({
+          fee_id: String(row.fee_id),
+          student_id: String(row.student_id),
+          full_name: String(row.full_name),
+          period: String(row.period),
           amount_due: Number(row.amount_due) || 0,
-          due_date: row.due_date,
+          due_date: String(row.due_date),
           amount_paid: Number(row.amount_paid) || 0,
           balance: Number(row.balance) || 0,
-          status: row.status as any,
+          status: row.status as FeeSummaryRow['status'],
         }))
       )
     } catch (err: unknown) {
@@ -113,22 +115,35 @@ export function PaymentHistoryDialog({
     } finally {
       setLoadingHistory(false)
     }
-  }, [fee?.student_id])
+  }, [studentId])
 
   useEffect(() => {
-    if (open && fee?.fee_id) {
-      fetchPayments()
-      fetchStudentPastFees()
-      setIsEditingAmount(false)
-      setNewAmountDue(fee.amount_due)
-      setPaymentToDelete(null)
-    } else {
-      setPayments([])
-      setStudentPastFees([])
+    let ignore = false
+    const timer = setTimeout(() => {
+      if (ignore) return
+      if (open && feeId) {
+        setIsEditingAmount(false)
+        setNewAmountDue(initialAmountDue)
+        setPaymentToDelete(null)
+        void fetchPayments()
+        void fetchStudentPastFees()
+      } else {
+        setPayments([])
+        setStudentPastFees([])
+      }
+    }, 0)
+    return () => {
+      ignore = true
+      clearTimeout(timer)
     }
-  }, [open, fee?.fee_id, fetchPayments, fetchStudentPastFees, fee?.amount_due])
+  }, [open, feeId, initialAmountDue, fetchPayments, fetchStudentPastFees])
 
   if (!fee) return null
+
+  const liveAmountPaid = loading
+    ? fee.amount_paid
+    : payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  const liveBalance = fee.amount_due - liveAmountPaid
 
   // Delete payment action
   async function handleDeletePayment() {
@@ -163,7 +178,7 @@ export function PaymentHistoryDialog({
   // Update Amount Due action (allowed ONLY if 0 payments)
   async function handleUpdateAmountDue() {
     if (!fee) return
-    if (payments.length > 0 || fee.amount_paid > 0) {
+    if (payments.length > 0 || liveAmountPaid > 0) {
       toast.error('Amount due cannot be edited after payments have been recorded.')
       return
     }
@@ -212,69 +227,75 @@ export function PaymentHistoryDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl bg-white p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-2.5">
-              <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
-                <History className="size-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-[var(--text)]">
-                  Fee Details & History
-                </DialogTitle>
-                <DialogDescription className="text-[var(--text-secondary)] text-xs">
-                  {fee.full_name} • {formatPeriod(fee.period)}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          {errorMsg && (
-            <div className="p-3 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-md border border-[var(--attention)]/30 flex items-center gap-2">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <div className="space-y-5 py-1">
-            {/* 1. Summary Box */}
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-medium">Fee Period</span>
-                <span className="font-bold text-slate-800">{formatPeriod(fee.period)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-medium">Due Date</span>
-                <span className="font-bold text-slate-800">{formatDate(fee.due_date)}</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center text-xs">
+        <DialogContent
+          className="p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px] w-[calc(100%-1.5rem)] sm:max-w-xl max-h-[88dvh] flex flex-col"
+          showCloseButton={true}
+        >
+          {/* Fixed Header */}
+          <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[var(--card-border)]/80 bg-white shrink-0 pr-12">
+            <DialogHeader className="gap-1 text-left">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-[14px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0 shadow-2xs">
+                  <History className="size-5 stroke-[2.2]" />
+                </div>
                 <div>
-                  <span className="text-slate-400 block text-xs">Due</span>
-                  <span className="font-bold text-slate-800">
+                  <DialogTitle className="text-base sm:text-lg font-bold text-[var(--text)] tracking-tight">
+                    Fee Details & History
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-[var(--text-secondary)]">
+                    {fee.full_name} • {formatPeriod(fee.period)}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 space-y-5 overscroll-contain">
+            {errorMsg && (
+              <div className="p-3.5 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[12px] border border-[var(--attention)]/30 flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span className="font-medium">{errorMsg}</span>
+              </div>
+            )}
+            {/* 1. Summary Box */}
+            <div className="p-3.5 bg-[var(--primary-soft)]/40 rounded-xl border border-[var(--card-border)] space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--text-secondary)] font-medium">Fee Period</span>
+                <span className="font-bold text-[var(--text)]">{formatPeriod(fee.period)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--text-secondary)] font-medium">Due Date</span>
+                <span className="font-bold text-[var(--text)]">{formatDate(fee.due_date)}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--card-border)]/60 text-center text-xs">
+                <div>
+                  <span className="text-[var(--text-secondary)] block text-xs">Due</span>
+                  <span className="font-bold text-[var(--text)]">
                     {formatCurrency(fee.amount_due)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-xs">Paid</span>
-                  <span className="font-bold text-emerald-700">
-                    {formatCurrency(fee.amount_paid)}
+                  <span className="text-[var(--text-secondary)] block text-xs">Paid</span>
+                  <span className="font-bold text-[var(--present-text)]">
+                    {formatCurrency(liveAmountPaid)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-xs">Balance</span>
+                  <span className="text-[var(--text-secondary)] block text-xs">Balance</span>
                   <span className="font-extrabold text-[var(--attention-text)]">
-                    {formatCurrency(fee.balance)}
+                    {formatCurrency(liveBalance)}
                   </span>
                 </div>
               </div>
 
               {/* Edit Amount Due (allowed ONLY if no payments) */}
-              {payments.length === 0 && fee.amount_paid === 0 && (
-                <div className="pt-2 border-t border-slate-200">
+              {payments.length === 0 && liveAmountPaid === 0 && (
+                <div className="pt-2 border-t border-[var(--card-border)]/60">
                   {isEditingAmount ? (
-                    <div className="space-y-2 bg-blue-50/60 p-3 rounded-lg border border-blue-200">
-                      <Label className="text-xs font-semibold text-blue-900">
+                    <div className="space-y-2 bg-[var(--primary-soft)] p-3 rounded-lg border border-[var(--primary)]/30">
+                      <Label className="text-xs font-semibold text-[var(--text)]">
                         Edit Amount Due (₹)
                       </Label>
                       <div className="flex items-center gap-2">
@@ -291,7 +312,7 @@ export function PaymentHistoryDialog({
                           size="sm"
                           onClick={handleUpdateAmountDue}
                           disabled={updatingAmount}
-                          className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
+                          className="h-10 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold cursor-pointer"
                         >
                           {updatingAmount ? 'Saving...' : 'Save'}
                         </Button>
@@ -305,7 +326,7 @@ export function PaymentHistoryDialog({
                           Cancel
                         </Button>
                       </div>
-                      <p className="text-xs text-blue-700">
+                      <p className="text-xs text-[var(--text-secondary)]">
                         Allowed before any payment is recorded (e.g. for scholarships or discounts).
                       </p>
                     </div>
@@ -313,7 +334,7 @@ export function PaymentHistoryDialog({
                     <button
                       type="button"
                       onClick={() => setIsEditingAmount(true)}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer pt-1"
+                      className="text-xs text-[var(--primary)] hover:underline font-semibold flex items-center gap-1 cursor-pointer pt-1"
                     >
                       <Edit2 className="size-3.5" />
                       <span>Edit fee amount (no payments recorded yet)</span>
@@ -406,17 +427,17 @@ export function PaymentHistoryDialog({
                         key={pastFee.fee_id}
                         className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
                           isCurrent
-                            ? 'bg-blue-50/50 border-blue-200'
-                            : 'bg-white border-slate-200'
+                            ? 'bg-[var(--primary-soft)] border-[var(--primary)]/30'
+                            : 'bg-white border-[var(--card-border)]/70'
                         }`}
                       >
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900">
+                            <span className="font-bold text-[var(--text)]">
                               {formatPeriod(pastFee.period)}
                             </span>
                             {isCurrent && (
-                              <Badge className="bg-blue-600 text-white text-xs px-1.5 py-0 font-bold">
+                              <Badge className="bg-[var(--primary)] text-white text-xs px-1.5 py-0 font-bold">
                                 Current
                               </Badge>
                             )}
@@ -448,16 +469,17 @@ export function PaymentHistoryDialog({
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          {/* Sticky Footer */}
+          <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="w-full min-h-[44px] cursor-pointer"
+              className="w-full min-h-[44px] rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--primary-soft)] cursor-pointer"
             >
               Close
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

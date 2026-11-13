@@ -13,7 +13,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   RotateCcw,
   Info,
 } from 'lucide-react'
@@ -46,7 +45,7 @@ export function SendResultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
+      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-md bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold text-[var(--text)]">

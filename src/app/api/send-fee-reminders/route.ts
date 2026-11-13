@@ -1,6 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { verifyApiAuth } from '@/lib/auth'
+import { apiError, apiSuccess } from '@/lib/api-response'
 
 // Schedule config constant: days after due_date to trigger reminders
 const REMINDER_OFFSETS_DAYS = [0, 2] // Offset 0 (on due date), Offset 2 (2 days after due date)
@@ -83,39 +85,11 @@ export async function POST(req: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    const cronSecret = process.env.CRON_SECRET || ''
 
-    // 1. Verify Caller: Authenticated user OR scheduler service role key
-    const authHeader = req.headers.get('Authorization')
-    let isAuthorized = false
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '').trim()
-      if (
-        (serviceRoleKey && token === serviceRoleKey) ||
-        (cronSecret && token === cronSecret)
-      ) {
-        isAuthorized = true
-      }
-    }
-
-    if (!isAuthorized) {
-      const supabase = await createClient()
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-
-      if (!authError && user) {
-        isAuthorized = true
-      }
-    }
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: 'Unauthorized: invalid or expired session.' },
-        { status: 401 }
-      )
+    // 1. Verify Caller: Authenticated Manager OR constant-time verified scheduler secret
+    const auth = await verifyApiAuth(req, { allowCronSecret: true })
+    if (!auth.authorized) {
+      return auth.response
     }
 
     const adminClient = serviceRoleKey
@@ -124,17 +98,20 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse payload
     let studentIdFilter: string | undefined
+    let feeIdFilter: string | undefined
     let dryPreview = false
 
     try {
       const body = await req.json()
       studentIdFilter = body?.student_id
+      feeIdFilter = body?.fee_id
       dryPreview = !!body?.dry_preview
     } catch {
       // Body optional for cron scheduler
     }
 
     const todayIST = getTodayIST()
+    const isManualSingleTarget = Boolean(studentIdFilter || feeIdFilter)
 
     // 3. First call generate_monthly_fees() for current month (safe to repeat)
     try {
@@ -149,7 +126,9 @@ export async function POST(req: NextRequest) {
       .select('fee_id, student_id, full_name, period, amount_due, due_date, balance, status')
       .gt('balance', 0)
 
-    if (studentIdFilter) {
+    if (feeIdFilter) {
+      feeQuery = feeQuery.eq('fee_id', feeIdFilter)
+    } else if (studentIdFilter) {
       feeQuery = feeQuery.eq('student_id', studentIdFilter)
     }
 
@@ -157,7 +136,7 @@ export async function POST(req: NextRequest) {
     if (feesError) throw feesError
 
     if (!unpaidFees || unpaidFees.length === 0) {
-      return NextResponse.json({
+      return apiSuccess({
         dry_run: process.env.WHATSAPP_DRY_RUN === 'true' || !process.env.WHATSAPP_TOKEN,
         sent: 0,
         failed: 0,
@@ -200,6 +179,7 @@ export async function POST(req: NextRequest) {
       .from('message_log')
       .select('id, student_id, fee_id, status, related_date')
       .eq('kind', 'fee_reminder')
+      .neq('template_name', 'payment_receipt_v1')
       .neq('status', 'failed')
       .in('fee_id', feeIds)
 
@@ -277,13 +257,13 @@ export async function POST(req: NextRequest) {
       const earlierLogs = logsByFee.get(fee.fee_id) || []
       const sentCount = earlierLogs.length
 
-      // Never send more than 2 reminders per fee row
-      if (sentCount >= REMINDER_OFFSETS_DAYS.length) {
-        continue
-      }
+      // Automated batch schedule check (skipped if manual single-row / single-student reminder)
+      if (!isManualSingleTarget) {
+        // Never send more than 2 automated reminders per fee row
+        if (sentCount >= REMINDER_OFFSETS_DAYS.length) {
+          continue
+        }
 
-      // Schedule Check (skipped if manual single student reminder)
-      if (!studentIdFilter) {
         // days since due_date in IST
         const daysSinceDue = getDaysDifference(todayIST, fee.due_date)
         const offsetsReached = REMINDER_OFFSETS_DAYS.filter(
@@ -309,7 +289,7 @@ export async function POST(req: NextRequest) {
     const isDryRun = process.env.WHATSAPP_DRY_RUN === 'true' || !process.env.WHATSAPP_TOKEN
 
     if (dryPreview) {
-      return NextResponse.json({
+      return apiSuccess({
         dry_run: isDryRun,
         preview_recipients: eligibleQueue.map((item) => ({
           student_id: item.student.id,
@@ -337,8 +317,13 @@ export async function POST(req: NextRequest) {
 
     const sentStudents: string[] = []
     const failedStudents: string[] = []
+    const BATCH_SIZE = 5
 
-    for (const item of eligibleQueue) {
+    async function processFeeReminderItem(item: {
+      fee: UnpaidFeeRow
+      student: StudentRow
+      reminderNumber: number
+    }) {
       const { fee, student } = item
 
       // Step A: INSERT message_log row first
@@ -365,12 +350,12 @@ export async function POST(req: NextRequest) {
           if (!alreadySentStudents.includes(student.full_name)) {
             alreadySentStudents.push(student.full_name)
           }
-          continue
+          return
         }
 
         console.error(`Log insert failed for ${student.full_name}:`, logInsertError)
         failedStudents.push(`${student.full_name}: ${logInsertError.message}`)
-        continue
+        return
       }
 
       const logId = logRow.id
@@ -415,45 +400,53 @@ export async function POST(req: NextRequest) {
             },
           }
 
-          const metaRes = await fetch(metaUrl, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${waToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(metaPayload),
-          })
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-          const metaJson = await metaRes.json()
+          try {
+            const metaRes = await fetch(metaUrl, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${waToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(metaPayload),
+              signal: controller.signal,
+            })
 
-          if (metaRes.ok && metaJson.messages && metaJson.messages.length > 0) {
-            const waMsgId = metaJson.messages[0].id
-            await adminClient
-              .from('message_log')
-              .update({
-                status: 'sent',
-                wa_message_id: waMsgId,
-              })
-              .eq('id', logId)
+            const metaJson = await metaRes.json()
 
-            sentStudents.push(student.full_name)
-          } else {
-            const errorMsg =
-              metaJson?.error?.message ||
-              metaJson?.error?.error_user_msg ||
-              'Meta API returned error'
+            if (metaRes.ok && metaJson.messages && metaJson.messages.length > 0) {
+              const waMsgId = metaJson.messages[0].id
+              await adminClient
+                .from('message_log')
+                .update({
+                  status: 'sent',
+                  wa_message_id: waMsgId,
+                })
+                .eq('id', logId)
 
-            console.error(`Meta API failure for ${student.full_name}:`, metaJson)
+              sentStudents.push(student.full_name)
+            } else {
+              const errorMsg =
+                metaJson?.error?.message ||
+                metaJson?.error?.error_user_msg ||
+                'Meta API returned error'
 
-            await adminClient
-              .from('message_log')
-              .update({
-                status: 'failed',
-                error: errorMsg,
-              })
-              .eq('id', logId)
+              console.error(`Meta API failure for ${student.full_name}:`, metaJson)
 
-            failedStudents.push(`${student.full_name}: ${errorMsg}`)
+              await adminClient
+                .from('message_log')
+                .update({
+                  status: 'failed',
+                  error: errorMsg,
+                })
+                .eq('id', logId)
+
+              failedStudents.push(`${student.full_name}: ${errorMsg}`)
+            }
+          } finally {
+            clearTimeout(timeoutId)
           }
         } catch (callErr: unknown) {
           const errStr =
@@ -471,12 +464,18 @@ export async function POST(req: NextRequest) {
           failedStudents.push(`${student.full_name}: ${errStr}`)
         }
       }
-
-      // Delay 200 ms between messages
-      await new Promise((resolve) => setTimeout(resolve, 200))
     }
 
-    return NextResponse.json({
+    for (let i = 0; i < eligibleQueue.length; i += BATCH_SIZE) {
+      const batch = eligibleQueue.slice(i, i + BATCH_SIZE)
+      await Promise.all(batch.map((item) => processFeeReminderItem(item)))
+      if (i + BATCH_SIZE < eligibleQueue.length) {
+        // Delay 200 ms between small batches
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+    }
+
+    return apiSuccess({
       dry_run: isDryRun,
       sent: sentStudents.length,
       failed: failedStudents.length,
@@ -488,8 +487,6 @@ export async function POST(req: NextRequest) {
       skipped_no_consent_students: skippedNoConsentStudents,
     })
   } catch (error: unknown) {
-    console.error('send-fee-reminders API error:', error)
-    const msg = error instanceof Error ? error.message : 'Internal Server Error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return apiError(error, req)
   }
 }

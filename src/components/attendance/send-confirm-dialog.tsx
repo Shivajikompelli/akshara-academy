@@ -32,7 +32,7 @@ export function SendConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
+      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-lg bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
@@ -96,13 +96,13 @@ export function SendConfirmDialog({
           )}
         </div>
 
-        <DialogFooter className="pt-2 gap-3 flex flex-row justify-end">
+        <DialogFooter className="pt-3 gap-2.5 sm:gap-3 flex flex-row justify-end w-full">
           <Button
             type="button"
             variant="outline"
             disabled={loading}
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
@@ -110,7 +110,7 @@ export function SendConfirmDialog({
             type="button"
             disabled={loading || eligible.length === 0}
             onClick={onConfirm}
-            className="min-h-[44px] px-6 rounded-[12px] font-bold text-sm bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs cursor-pointer disabled:opacity-40"
+            className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] font-bold text-xs sm:text-sm bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-md cursor-pointer disabled:opacity-40"
           >
             {loading ? 'Sending Alerts...' : `Confirm & Send (${eligible.length})`}
           </Button>

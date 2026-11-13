@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,10 +14,8 @@ import { formatCurrency } from '@/lib/formatters'
 import {
   BellRing,
   Send,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
-  Clock,
   Info,
   RefreshCw,
   Users,
@@ -54,6 +51,7 @@ interface SendFeeRemindersDialogProps {
   onCompleted: () => void
   singleStudentId?: string
   singleStudentName?: string
+  singleFeeId?: string
 }
 
 export function SendFeeRemindersDialog({
@@ -62,6 +60,7 @@ export function SendFeeRemindersDialog({
   onCompleted,
   singleStudentId,
   singleStudentName,
+  singleFeeId,
 }: SendFeeRemindersDialogProps) {
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [sending, setSending] = useState(false)
@@ -77,41 +76,54 @@ export function SendFeeRemindersDialog({
 
   // Fetch preview when dialog opens
   useEffect(() => {
-    if (open) {
-      setResult(null)
-      fetchPreview()
-    } else {
-      setPreviewData(null)
-      setResult(null)
-    }
-  }, [open, singleStudentId])
+    let ignore = false
 
-  async function fetchPreview() {
-    setLoadingPreview(true)
-    try {
-      const res = await fetch('/api/send-fee-reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dry_preview: true,
-          student_id: singleStudentId || undefined,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch reminder preview')
+    async function loadPreview() {
+      if (!open) {
+        setPreviewData(null)
+        setResult(null)
+        return
       }
-      setPreviewData(data)
-    } catch (err: unknown) {
-      console.error('Preview error:', err)
-      const msg = err instanceof Error ? err.message : 'Failed to preview reminders'
-      toast.error(msg)
-      onOpenChange(false)
-    } finally {
-      setLoadingPreview(false)
+      setResult(null)
+      setLoadingPreview(true)
+      try {
+        const res = await fetch('/api/send-fee-reminders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dry_preview: true,
+            student_id: singleStudentId || undefined,
+            fee_id: singleFeeId || undefined,
+          }),
+        })
+
+        const data = await res.json()
+        if (!res.ok) {
+          const errObj = typeof data.error === 'object' && data.error !== null ? data.error : null
+          throw new Error(errObj?.message || (typeof data.error === 'string' ? data.error : 'Failed to fetch reminder preview'))
+        }
+        if (!ignore) {
+          setPreviewData(data)
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Preview error:', err)
+          const msg = err instanceof Error ? err.message : 'Failed to preview reminders'
+          toast.error(msg)
+          onOpenChange(false)
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingPreview(false)
+        }
+      }
     }
-  }
+
+    void loadPreview()
+    return () => {
+      ignore = true
+    }
+  }, [open, singleStudentId, singleFeeId, onOpenChange])
 
   async function handleSendReminders() {
     setSending(true)
@@ -121,12 +133,14 @@ export function SendFeeRemindersDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           student_id: singleStudentId || undefined,
+          fee_id: singleFeeId || undefined,
         }),
       })
 
-      const data: ReminderSummary = await res.json()
+      const data = await res.json()
       if (!res.ok) {
-        throw new Error((data as any).error || 'Failed to send fee reminders')
+        const errObj = typeof data.error === 'object' && data.error !== null ? data.error : null
+        throw new Error(errObj?.message || (typeof data.error === 'string' ? data.error : 'Failed to send fee reminders'))
       }
 
       setResult(data)
@@ -152,31 +166,40 @@ export function SendFeeRemindersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white p-6 max-h-[90vh] overflow-y-auto rounded-[24px] border border-[var(--card-border)] shadow-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-2.5">
-            <div className="size-10 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0">
-              <BellRing className="size-5" />
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px] w-[calc(100%-1.5rem)] sm:max-w-xl max-h-[88dvh] flex flex-col"
+        showCloseButton={true}
+      >
+        {/* Fixed Header */}
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[var(--card-border)]/80 bg-white shrink-0 pr-12">
+          <DialogHeader className="gap-1 text-left">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-[14px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center shrink-0 shadow-2xs">
+                <BellRing className="size-5 stroke-[2.2] text-[var(--primary)]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold text-[var(--text)] tracking-tight">
+                  {singleStudentName
+                    ? `Send Fee Reminder: ${singleStudentName}`
+                    : 'Send Scheduled Fee Reminders'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-[var(--text-secondary)]">
+                  {singleStudentName
+                    ? 'Manual WhatsApp fee reminder for this student.'
+                    : 'Sends due fee reminders based on schedule (Day 0 on due date, Day 2 after due date).'}
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-lg font-bold text-[var(--text)]">
-                {singleStudentName
-                  ? `Send Fee Reminder: ${singleStudentName}`
-                  : 'Send Scheduled Fee Reminders'}
-              </DialogTitle>
-              <DialogDescription className="text-[var(--text-secondary)] text-xs">
-                {singleStudentName
-                  ? 'Manual WhatsApp fee reminder for this student.'
-                  : 'Sends due fee reminders based on schedule (Day 0 on due date, Day 2 after due date).'}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 space-y-4 overscroll-contain">
 
         {/* Loading State */}
         {loadingPreview ? (
-          <div className="py-12 text-center text-xs text-slate-500 space-y-2">
-            <RefreshCw className="size-6 animate-spin mx-auto text-blue-600" />
+          <div className="py-12 text-center text-xs text-[var(--text-secondary)] space-y-2">
+            <RefreshCw className="size-6 animate-spin mx-auto text-[var(--primary)]" />
             <p>Evaluating fee schedule and WhatsApp consent in Asia/Kolkata time...</p>
           </div>
         ) : result ? (
@@ -270,16 +293,6 @@ export function SendFeeRemindersDialog({
                 </div>
               </div>
             )}
-
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="w-full min-h-[44px] cursor-pointer"
-              >
-                Done
-              </Button>
-            </DialogFooter>
           </div>
         ) : (
           /* Preview Confirmation View */
@@ -301,17 +314,17 @@ export function SendFeeRemindersDialog({
             {/* Eligible Recipients List */}
             <div>
               <div className="flex items-center justify-between pb-1.5">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="size-3.5 text-blue-600" />
+                <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="size-3.5 text-[var(--primary)]" />
                   <span>Recipients Due for Reminder ({previewData?.preview_recipients.length || 0})</span>
                 </span>
               </div>
 
               {!previewData || previewData.preview_recipients.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 border border-dashed rounded-xl">
-                  <CheckCircle2 className="size-8 mx-auto text-emerald-500 mb-1" />
-                  <p className="font-semibold text-slate-700">No fee reminders are due today.</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                <div className="p-6 text-center text-xs text-[var(--text-secondary)] bg-[var(--primary-soft)]/40 border border-dashed border-[var(--card-border)] rounded-xl">
+                  <CheckCircle2 className="size-8 mx-auto text-[var(--present)] mb-1" />
+                  <p className="font-semibold text-[var(--text)]">No fee reminders are due today.</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                     Either fees are not yet at offset 0 (due date) or offset 2, or reminders were already sent today.
                   </p>
                 </div>
@@ -320,27 +333,27 @@ export function SendFeeRemindersDialog({
                   {previewData.preview_recipients.map((r) => (
                     <div
                       key={r.fee_id}
-                      className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs flex items-center justify-between text-xs"
+                      className="p-3 bg-white rounded-lg border border-[var(--card-border)] shadow-2xs flex items-center justify-between text-xs"
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">
+                          <span className="font-bold text-[var(--text)] text-sm">
                             {r.student_name}
                           </span>
-                          <Badge variant="outline" className="text-xs bg-slate-50">
+                          <Badge variant="outline" className="text-xs bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--card-border)]">
                             {r.class_level}
                           </Badge>
                           <Badge
                             className={
                               r.reminder_number === 1
-                                ? 'bg-blue-100 text-blue-800 border-0 text-xs'
+                                ? 'bg-[var(--primary-soft)] text-[var(--primary)] border-0 text-xs'
                                 : 'bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 text-xs'
                             }
                           >
-                            Reminder {r.reminder_number} of 2
+                            Reminder {r.reminder_number}{r.reminder_number <= 2 ? ' of 2' : ''}
                           </Badge>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                           {r.period} • Due on {r.due_date}
                         </p>
                       </div>
@@ -349,7 +362,7 @@ export function SendFeeRemindersDialog({
                         <span className="font-bold text-[var(--attention-text)] block">
                           {formatCurrency(r.balance)}
                         </span>
-                        <span className="text-xs text-slate-400">Balance</span>
+                        <span className="text-xs text-[var(--text-secondary)]">Balance</span>
                       </div>
                     </div>
                   ))}
@@ -380,39 +393,53 @@ export function SendFeeRemindersDialog({
                 </p>
               </div>
             )}
-
-            <DialogFooter className="pt-2 gap-2 sm:gap-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={sending}
-                className="min-h-[44px] cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSendReminders}
-                disabled={
-                  sending ||
-                  !previewData ||
-                  previewData.preview_recipients.length === 0
-                }
-                className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 cursor-pointer"
-              >
-                <Send className="size-4" />
-                <span>
-                  {sending
-                    ? 'Sending reminders...'
-                    : `Confirm & Send ${previewData?.preview_recipients.length || 0} Reminders`}
-                </span>
-              </Button>
-            </DialogFooter>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
-  )
+      </div>
+
+      {/* Sticky Footer (Always Visible on Screen) */}
+      <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+        {result ? (
+          <Button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="w-full min-h-[44px] rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold cursor-pointer"
+          >
+            Done
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2.5 sm:gap-3 justify-end w-full">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={sending}
+              className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendReminders}
+              disabled={
+                sending ||
+                !previewData ||
+                previewData.preview_recipients.length === 0
+              }
+              className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm gap-2 cursor-pointer shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
+            >
+              <Send className="size-4" />
+              <span>
+                {sending
+                  ? 'Sending reminders...'
+                  : `Confirm & Send ${previewData?.preview_recipients.length || 0} Reminders`}
+              </span>
+            </Button>
+          </div>
+        )}
+      </div>
+    </DialogContent>
+  </Dialog>
+)
 }
 

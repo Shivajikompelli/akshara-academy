@@ -1,13 +1,27 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAuthorizedManager, safeCompareSecrets } from '@/lib/auth'
+
+function applySecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  return res
+}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || ''
-  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || ''
+  const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+  const rawKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
 
   // Validate URL to prevent crashes from typos in .env
   let validUrl = false
@@ -19,10 +33,11 @@ export async function proxy(request: NextRequest) {
   }
 
   let user = null
+  let supabase = null
 
   if (validUrl && rawKey) {
     try {
-      const supabase = createServerClient(rawUrl, rawKey, {
+      supabase = createServerClient(rawUrl, rawKey, {
         cookies: {
           getAll() {
             return request.cookies.getAll()
@@ -48,24 +63,81 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login')
-  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth')
+  const pathname = request.nextUrl.pathname
+  const isLoginPage = pathname.startsWith('/login')
+  const isAuthCallback = pathname.startsWith('/auth')
+  const isAuthApi = pathname.startsWith('/api/auth/')
+  const isApiRoute = pathname.startsWith('/api/')
+
+  // Allow /api/send-fee-reminders when called with valid CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY Bearer token
+  let isCronAuthorized = false
+  if (pathname === '/api/send-fee-reminders') {
+    const authHeader = request.headers.get('Authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice('Bearer '.length).trim()
+      const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+      const cronSecret = (process.env.CRON_SECRET || '').trim()
+      if (
+        (serviceRoleKey && safeCompareSecrets(token, serviceRoleKey)) ||
+        (cronSecret && safeCompareSecrets(token, cronSecret))
+      ) {
+        isCronAuthorized = true
+      }
+    }
+  }
+
+  const authz = isAuthorizedManager(user)
+
+  // If signed in with an unauthorized account, revoke session immediately
+  if (user && !authz.authorized) {
+    if (supabase) {
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // Ignore signOut error in proxy
+      }
+    }
+    if (isApiRoute && !isAuthApi) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: authz.reason || 'Forbidden: account not authorized.' },
+          { status: 403 }
+        )
+      )
+    }
+    if (!isLoginPage) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/login'
+      redirectUrl.searchParams.set('error', 'unauthorized')
+      return applySecurityHeaders(NextResponse.redirect(redirectUrl))
+    }
+  }
+
+  // For API routes (other than /api/auth/* or cron-authenticated job), return 401 JSON if not authenticated
+  if (isApiRoute && !isAuthApi && !isCronAuthorized && (!user || !authz.authorized)) {
+    return applySecurityHeaders(
+      NextResponse.json(
+        { error: 'Unauthorized: please sign in.' },
+        { status: 401 }
+      )
+    )
+  }
 
   // If user is not authenticated and trying to access a protected page
-  if (!user && !isLoginPage && !isAuthCallback) {
+  if ((!user || !authz.authorized) && !isLoginPage && !isAuthCallback && !isApiRoute) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/login'
-    return NextResponse.redirect(redirectUrl)
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
-  // If authenticated user visits /login, redirect to home
-  if (user && isLoginPage) {
+  // If authenticated & authorized user visits /login, redirect to home
+  if (user && authz.authorized && isLoginPage) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
-    return NextResponse.redirect(redirectUrl)
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
-  return supabaseResponse
+  return applySecurityHeaders(supabaseResponse)
 }
 
 export const config = {
@@ -80,4 +152,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
-

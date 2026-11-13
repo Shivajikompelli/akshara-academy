@@ -33,7 +33,7 @@ export function StatusConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
+      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-md bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div
@@ -69,13 +69,13 @@ export function StatusConfirmDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="pt-3 gap-3 flex flex-row justify-end">
+        <DialogFooter className="pt-3 gap-2.5 sm:gap-3 flex flex-row justify-end w-full">
           <Button
             type="button"
             variant="outline"
             disabled={loading}
             onClick={() => onOpenChange(false)}
-            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
@@ -83,7 +83,7 @@ export function StatusConfirmDialog({
             type="button"
             disabled={loading}
             onClick={onConfirm}
-            className={`min-h-[44px] px-6 rounded-[12px] text-white font-bold text-sm cursor-pointer shadow-xs ${
+            className={`min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md active:scale-[0.98] transition-all ${
               isDeactivating
                 ? 'bg-[#9A4A00] hover:bg-[#853E00]'
                 : 'bg-[var(--present)] hover:bg-[var(--present-text)]'

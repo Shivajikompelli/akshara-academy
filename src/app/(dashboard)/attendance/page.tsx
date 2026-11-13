@@ -20,11 +20,14 @@ import { SendConfirmDialog } from '@/components/attendance/send-confirm-dialog'
 import { SendResultDialog, type AbsentAlertResult } from '@/components/attendance/send-result-dialog'
 import { InitialsAvatar } from '@/components/ui/initials-avatar'
 import { AttendanceToggle } from '@/components/ui/attendance-toggle'
+import { getTodayIST, addDaysYYYYMMDD } from '@/lib/formatters'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import type { Student } from '@/types/database'
 
 interface AttendanceItem {
   student: Student
   status: 'present' | 'absent'
+  isRecorded?: boolean
 }
 
 export default function AttendancePage() {
@@ -37,7 +40,7 @@ export default function AttendancePage() {
     let ignore = false
     const timer = setTimeout(() => {
       if (ignore) return
-      const today = new Date().toISOString().split('T')[0]
+      const today = getTodayIST()
       setSelectedDate((prev) => prev || today)
       setTodayStr(today)
     }, 0)
@@ -194,10 +197,14 @@ export default function AttendancePage() {
         const initialList: AttendanceItem[] = students.map((student) => ({
           student,
           status: attendanceMap.get(student.id) || 'present',
+          isRecorded: attendanceMap.has(student.id),
         }))
 
+        const hasPartiallyUnrecordedStudents =
+          attendanceMap.size > 0 && attendanceMap.size < students.length
+
         setAttendanceList(initialList)
-        setHasUnsavedChanges(false)
+        setHasUnsavedChanges(hasPartiallyUnrecordedStudents)
       } catch (err: unknown) {
         if (!ignore) {
           console.error('Failed to load attendance:', err)
@@ -261,9 +268,7 @@ export default function AttendancePage() {
   // Step dates (past allowed, future blocked)
   function adjustDate(days: number) {
     if (!selectedDate) return
-    const current = new Date(selectedDate)
-    current.setDate(current.getDate() + days)
-    const formatted = current.toISOString().split('T')[0]
+    const formatted = addDaysYYYYMMDD(selectedDate, days)
     handleDateChange(formatted)
   }
 
@@ -320,6 +325,7 @@ export default function AttendancePage() {
     })
     setIsTaken(true)
     setTakenTime(timeStr)
+    setAttendanceList((prev) => prev.map((item) => ({ ...item, isRecorded: true })))
     setHasUnsavedChanges(false)
     return true
   }
@@ -351,12 +357,9 @@ export default function AttendancePage() {
       return
     }
 
-    // Check date eligibility (only today or yesterday)
+    // Check date eligibility (only today or yesterday in IST)
     if (todayStr) {
-      const todayDate = new Date(todayStr)
-      const yesterdayDate = new Date(todayDate)
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]
+      const yesterdayStr = addDaysYYYYMMDD(todayStr, -1)
 
       if (selectedDate !== todayStr && selectedDate !== yesterdayStr) {
         toast.error('WhatsApp absent alerts can only be sent for today or yesterday.')
@@ -405,7 +408,8 @@ export default function AttendancePage() {
         })
         const apiJson = await apiRes.json()
         if (!apiRes.ok) {
-          throw new Error(apiJson.error || 'Failed to process absent alerts')
+          const errObj = typeof apiJson.error === 'object' && apiJson.error !== null ? apiJson.error : null
+          throw new Error(errObj?.message || (typeof apiJson.error === 'string' ? apiJson.error : 'Failed to process absent alerts'))
         }
         data = apiJson
       }
@@ -467,9 +471,13 @@ export default function AttendancePage() {
   }, [attendanceList, searchQuery])
 
   const isToday = Boolean(selectedDate && todayStr && selectedDate === todayStr)
+  const unrecordedCount = useMemo(
+    () => (isTaken ? attendanceList.filter((i) => !i.isRecorded).length : 0),
+    [attendanceList, isTaken]
+  )
 
   return (
-    <div className="space-y-4 max-w-[1100px] mx-auto pb-24">
+    <div className="space-y-4 max-w-[1100px] mx-auto pb-48 md:pb-28">
       {/* Dry Run Banner (shown if function reports dry run mode) */}
       {alertResult?.dry_run && (
         <div className="p-4 bg-[var(--attention-bg)] border border-[var(--attention)]/30 rounded-[16px] text-[var(--attention-text)] text-xs flex items-center justify-between">
@@ -496,10 +504,15 @@ export default function AttendancePage() {
 
           {/* Status Badge: Attendance taken or Not taken yet */}
           <div className="shrink-0">
-            {isTaken ? (
+            {isTaken && unrecordedCount === 0 ? (
               <div className="bg-[var(--present-bg)] text-[var(--present-text)] border border-[var(--present)]/30 font-bold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
                 <Check className="size-3.5 stroke-[2.5]" />
                 <span>Taken {takenTime ? `(${takenTime})` : ''}</span>
+              </div>
+            ) : isTaken && unrecordedCount > 0 ? (
+              <div className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
+                <Clock className="size-3.5" />
+                <span>{unrecordedCount} new unsaved</span>
               </div>
             ) : (
               <div className="bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30 font-bold text-xs px-2.5 sm:px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5">
@@ -701,6 +714,11 @@ export default function AttendancePage() {
                       >
                         {student.full_name}
                       </span>
+                      {isTaken && !item.isRecorded && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[var(--attention-bg)] text-[var(--attention-text)] border border-[var(--attention)]/30">
+                          Unsaved
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-sm font-normal text-[var(--text-secondary)] mt-0.5 truncate flex items-center gap-1.5">
@@ -730,9 +748,9 @@ export default function AttendancePage() {
 
       {/* 3. STICKY BOTTOM BAR: One primary element (solid purple), secondary (outline) */}
       {attendanceList.length > 0 && (
-        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/70 p-3.5 sm:p-4 shadow-lg">
-          <div className="max-w-[1100px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="text-sm font-bold text-[var(--text)]">
+        <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[var(--card-border)]/70 p-3 sm:p-4 shadow-lg">
+          <div className="max-w-[1100px] mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="text-xs sm:text-sm font-bold text-[var(--text)] flex items-center justify-between sm:block">
               <div className="flex items-center gap-2">
                 <span className="text-[var(--present-text)]">Present: {presentCount}</span>
                 <span className="text-[var(--text-secondary)] opacity-60">·</span>
@@ -745,16 +763,16 @@ export default function AttendancePage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Secondary Action: Save attendance (outline) */}
               <button
                 type="button"
                 onClick={handleSaveAttendanceOnly}
                 disabled={saving || sendingAlerts || loading}
-                className="min-h-[44px] px-3.5 sm:px-5 rounded-[12px] font-bold text-xs sm:text-sm border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-3 sm:px-5 rounded-[12px] font-bold text-xs sm:text-sm border-2 border-[var(--card-border)] text-[var(--primary)] bg-white hover:bg-[var(--primary-soft)] cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
-                <Save className="size-4" />
-                <span>{saving ? 'Saving...' : 'Save only'}</span>
+                <Save className="size-4 shrink-0" />
+                <span className="truncate">{saving ? 'Saving...' : 'Save only'}</span>
               </button>
 
               {/* One Primary Element: Save and notify absentees (solid purple) */}
@@ -762,10 +780,10 @@ export default function AttendancePage() {
                 type="button"
                 onClick={handleInitiateSaveAndNotify}
                 disabled={absentCount === 0 || saving || sendingAlerts || loading}
-                className="min-h-[44px] px-4 sm:px-6 rounded-[12px] font-bold text-xs sm:text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+                className="min-h-[44px] px-3.5 sm:px-6 rounded-[12px] font-bold text-xs sm:text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
               >
-                <Send className="size-4" />
-                <span>{sendingAlerts ? 'Processing...' : 'Save and notify absentees'}</span>
+                <Send className="size-4 shrink-0" />
+                <span className="truncate">{sendingAlerts ? 'Processing...' : 'Save & notify absentees'}</span>
               </button>
             </div>
           </div>
@@ -773,22 +791,26 @@ export default function AttendancePage() {
       )}
 
       {/* Confirmation Dialog before sending WhatsApp alerts */}
-      <SendConfirmDialog
-        open={confirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
-        absentStudents={absentStudentsList}
-        loading={sendingAlerts}
-        onConfirm={() => handleExecuteAlerts(false)}
-      />
+      <ErrorBoundary fallbackTitle="Attendance Alert Dialog Error">
+        <SendConfirmDialog
+          open={confirmDialogOpen}
+          onOpenChange={setConfirmDialogOpen}
+          absentStudents={absentStudentsList}
+          loading={sendingAlerts}
+          onConfirm={() => handleExecuteAlerts(false)}
+        />
+      </ErrorBoundary>
 
       {/* Result Dialog after sending */}
-      <SendResultDialog
-        open={resultDialogOpen}
-        onOpenChange={setResultDialogOpen}
-        result={alertResult}
-        retrying={retryingAlerts}
-        onRetryFailed={() => handleExecuteAlerts(true)}
-      />
+      <ErrorBoundary fallbackTitle="Attendance Result Dialog Error">
+        <SendResultDialog
+          open={resultDialogOpen}
+          onOpenChange={setResultDialogOpen}
+          result={alertResult}
+          retrying={retryingAlerts}
+          onRetryFailed={() => handleExecuteAlerts(true)}
+        />
+      </ErrorBoundary>
     </div>
   )
 }

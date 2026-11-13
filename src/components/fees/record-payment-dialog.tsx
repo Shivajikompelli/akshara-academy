@@ -13,8 +13,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatCurrency, formatDate } from '@/lib/formatters'
-import { CreditCard, AlertTriangle, AlertCircle } from 'lucide-react'
+import { formatCurrency, formatDate, getTodayIST } from '@/lib/formatters'
+import { CreditCard, AlertTriangle, AlertCircle, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FeeSummaryRow } from '@/types/database'
 
@@ -42,16 +42,17 @@ function RecordPaymentForm({
     fee.balance > 0 ? fee.balance : fee.amount_due
   )
   const [paidOn, setPaidOn] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0]
+    return getTodayIST()
   })
   const [mode, setMode] = useState<PaymentMode>('cash')
   const [reference, setReference] = useState<string>('')
+  const [sendReceipt, setSendReceipt] = useState<boolean>(true)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [confirmOverpayment, setConfirmOverpayment] = useState(false)
 
   const isOverpayment = amount > fee.balance
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getTodayIST()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -84,20 +85,64 @@ function RecordPaymentForm({
         data: { user },
       } = await supabase.auth.getUser()
 
-      const { error } = await supabase.from('fee_payments').insert({
-        fee_id: fee.fee_id,
-        amount: Number(amount),
-        paid_on: paidOn || todayStr,
-        mode,
-        reference: reference.trim() || null,
-        recorded_by: user?.id || null,
-      })
+      const { data: paymentRow, error } = await supabase
+        .from('fee_payments')
+        .insert({
+          fee_id: fee.fee_id,
+          amount: Number(amount),
+          paid_on: paidOn || todayStr,
+          mode,
+          reference: reference.trim() || null,
+          recorded_by: user?.id || null,
+        })
+        .select('id')
+        .single()
 
       if (error) throw error
 
-      toast.success(
-        `Payment of ${formatCurrency(amount)} recorded for ${fee.full_name}!`
-      )
+      if (sendReceipt) {
+        try {
+          const receiptRes = await fetch('/api/send-payment-receipt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              student_id: fee.student_id,
+              fee_id: fee.fee_id,
+              payment_id: paymentRow?.id,
+              amount_paid: Number(amount),
+              paid_on: paidOn || todayStr,
+              period: fee.period,
+              mode,
+              reference: reference.trim() || null,
+            }),
+          })
+          const receiptData = await receiptRes.json()
+          if (receiptData?.sent) {
+            toast.success(
+              receiptData.dry_run
+                ? `Payment recorded! (Dry Run receipt ${receiptData.receipt_no} logged)`
+                : `Payment recorded & WhatsApp receipt (${receiptData.receipt_no}) sent to parent!`
+            )
+          } else if (receiptData?.skipped_no_consent) {
+            toast.success(
+              `Payment of ${formatCurrency(amount)} recorded! (Parent has not opted into WhatsApp receipts)`
+            )
+          } else {
+            toast.success(
+              `Payment of ${formatCurrency(amount)} recorded! (Receipt message queued in Message Log)`
+            )
+          }
+        } catch {
+          toast.success(
+            `Payment of ${formatCurrency(amount)} recorded for ${fee.full_name}!`
+          )
+        }
+      } else {
+        toast.success(
+          `Payment of ${formatCurrency(amount)} recorded for ${fee.full_name}!`
+        )
+      }
+
       onPaymentRecorded()
       onClose()
     } catch (err: unknown) {
@@ -114,14 +159,14 @@ function RecordPaymentForm({
     <>
       <DialogHeader>
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-full bg-emerald-100 text-emerald-800">
+          <div className="p-2 rounded-full bg-[var(--present-bg)] text-[var(--present-text)]">
             <CreditCard className="size-5" />
           </div>
-          <DialogTitle className="text-lg font-bold text-slate-900">
+          <DialogTitle className="text-lg font-bold text-[var(--text)]">
             Record Fee Payment
           </DialogTitle>
         </div>
-        <DialogDescription className="text-slate-600 text-xs">
+        <DialogDescription className="text-[var(--text-secondary)] text-xs">
           Record a fee receipt for <strong>{fee.full_name}</strong> (
           {fee.class_level || 'Student'})
         </DialogDescription>
@@ -135,35 +180,35 @@ function RecordPaymentForm({
       )}
 
       {/* Student Fee Context */}
-      <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+      <div className="bg-[var(--primary-soft)]/40 p-3.5 rounded-lg border border-[var(--card-border)] space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500">Fee Period</span>
-          <span className="font-semibold text-slate-800">
+          <span className="text-[var(--text-secondary)]">Fee Period</span>
+          <span className="font-semibold text-[var(--text)]">
             {formatDate(fee.period)}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500">Due Date</span>
-          <span className="font-semibold text-slate-800">
+          <span className="text-[var(--text-secondary)]">Due Date</span>
+          <span className="font-semibold text-[var(--text)]">
             {formatDate(fee.due_date)}
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--card-border)]/60 text-xs">
           <div>
-            <span className="text-slate-400 block text-xs">Total Due</span>
-            <span className="font-semibold text-slate-800">
+            <span className="text-[var(--text-secondary)] block text-xs">Total Due</span>
+            <span className="font-semibold text-[var(--text)]">
               {formatCurrency(fee.amount_due)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-xs">Paid So Far</span>
-            <span className="font-semibold text-emerald-700">
+            <span className="text-[var(--text-secondary)] block text-xs">Paid So Far</span>
+            <span className="font-semibold text-[var(--present-text)]">
               {formatCurrency(fee.amount_paid)}
             </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-xs">Balance</span>
+            <span className="text-[var(--text-secondary)] block text-xs">Balance</span>
             <span className="font-bold text-[var(--attention-text)]">
               {formatCurrency(fee.balance)}
             </span>
@@ -175,21 +220,21 @@ function RecordPaymentForm({
         {/* Amount Input */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="amount" className="text-xs font-semibold text-slate-700">
+            <Label htmlFor="amount" className="text-xs font-semibold text-[var(--text)]">
               Payment Amount (₹) *
             </Label>
             {fee.balance > 0 && (
               <button
                 type="button"
                 onClick={() => setAmount(fee.balance)}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                className="text-xs text-[var(--primary)] hover:underline font-semibold cursor-pointer"
               >
                 Pay full balance ({formatCurrency(fee.balance)})
               </button>
             )}
           </div>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 font-bold">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--text-secondary)] font-bold">
               ₹
             </span>
             <Input
@@ -206,34 +251,34 @@ function RecordPaymentForm({
                   setConfirmOverpayment(false)
                 }
               }}
-              className="pl-8 h-11 text-sm font-bold text-slate-900"
+              className="pl-8 h-11 text-sm font-bold text-[var(--text)]"
               disabled={loading}
             />
           </div>
 
           {/* Overpayment warning & confirmation */}
           {isOverpayment ? (
-            <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-xs space-y-2">
+            <div className="p-3 bg-[var(--attention-bg)] border border-[var(--attention)]/40 rounded-lg text-[var(--attention-text)] text-xs space-y-2">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
+                <AlertTriangle className="size-4 text-[var(--attention-text)] shrink-0 mt-0.5" />
                 <p>
                   <strong>Overpayment warning:</strong> Amount (
                   {formatCurrency(amount)}) is greater than the outstanding
                   balance ({formatCurrency(fee.balance)}).
                 </p>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer font-medium text-amber-950 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-[var(--attention-text)] pt-1">
                 <input
                   type="checkbox"
                   checked={confirmOverpayment}
                   onChange={(e) => setConfirmOverpayment(e.target.checked)}
-                  className="size-4 rounded text-blue-600 border-amber-300 cursor-pointer"
+                  className="size-4 rounded accent-[var(--primary)] cursor-pointer"
                 />
                 <span>Confirm overpayment amount</span>
               </label>
             </div>
           ) : amount < fee.balance && amount > 0 ? (
-            <p className="text-xs text-amber-700 font-medium">
+            <p className="text-xs text-[var(--attention-text)] font-medium">
               Partial payment: Remaining balance will be{' '}
               {formatCurrency(fee.balance - amount)}.
             </p>
@@ -242,7 +287,7 @@ function RecordPaymentForm({
 
         {/* Payment Date */}
         <div className="space-y-1.5">
-          <Label htmlFor="paid_on" className="text-xs font-semibold text-slate-700">
+          <Label htmlFor="paid_on" className="text-xs font-semibold text-[var(--text)]">
             Payment Date *
           </Label>
           <Input
@@ -255,12 +300,12 @@ function RecordPaymentForm({
             className="h-11 text-sm"
             disabled={loading}
           />
-          <p className="text-xs text-slate-400">Future dates are blocked.</p>
+          <p className="text-xs text-[var(--text-secondary)]">Future dates are blocked.</p>
         </div>
 
         {/* Payment Mode */}
         <div className="space-y-1.5">
-          <Label htmlFor="mode" className="text-xs font-semibold text-slate-700">
+          <Label htmlFor="mode" className="text-xs font-semibold text-[var(--text)]">
             Payment Mode *
           </Label>
           <div className="grid grid-cols-3 gap-2">
@@ -275,10 +320,10 @@ function RecordPaymentForm({
                 key={m.key}
                 type="button"
                 onClick={() => setMode(m.key)}
-                className={`h-11 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                className={`h-11 rounded-[12px] text-xs font-bold border transition-colors cursor-pointer ${
                   mode === m.key
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs'
+                    : 'bg-white text-[var(--text)] border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
                 }`}
               >
                 {m.label}
@@ -291,7 +336,7 @@ function RecordPaymentForm({
         <div className="space-y-1.5">
           <Label
             htmlFor="reference"
-            className="text-xs font-semibold text-slate-700"
+            className="text-xs font-semibold text-[var(--text)]"
           >
             Transaction Reference / Notes
           </Label>
@@ -306,20 +351,40 @@ function RecordPaymentForm({
           />
         </div>
 
-        <DialogFooter className="pt-2 gap-3 flex flex-row justify-end">
+        {/* Send WhatsApp Receipt Toggle */}
+        <label className="flex items-center gap-3 p-3 rounded-[12px] bg-[var(--whatsapp-bg)] border border-[var(--whatsapp)]/30 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={sendReceipt}
+            onChange={(e) => setSendReceipt(e.target.checked)}
+            disabled={loading}
+            className="size-4 rounded accent-[var(--whatsapp-text)] cursor-pointer shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <span className="text-xs font-bold text-[var(--whatsapp-text)] flex items-center gap-1.5">
+              <MessageSquare className="size-3.5 text-[var(--whatsapp)] shrink-0" />
+              <span>Send WhatsApp payment receipt to parent</span>
+            </span>
+            <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
+              Sends payment confirmation & receipt number if opted in
+            </span>
+          </div>
+        </label>
+
+        <DialogFooter className="pt-3 gap-2.5 sm:gap-3 flex flex-row justify-end w-full">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="min-h-[44px] px-5 rounded-[12px] font-bold text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={loading || (isOverpayment && !confirmOverpayment)}
-            className="min-h-[44px] px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-sm cursor-pointer shadow-xs disabled:opacity-40"
+            className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-40"
           >
             {loading ? 'Recording...' : 'Record Payment'}
           </Button>
@@ -339,7 +404,7 @@ export function RecordPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-6 rounded-[24px] border border-[var(--card-border)] shadow-lg">
+      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-md bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[92dvh] overflow-y-auto">
         <RecordPaymentForm
           key={fee.fee_id}
           fee={fee}

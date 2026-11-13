@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Home,
   Users,
@@ -44,7 +44,23 @@ export const NAV_ITEMS = [
 
 export function DesktopTopBar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [hasFailedMessages, setHasFailedMessages] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.replace('/login')
+        router.refresh()
+      }
+    })
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router])
 
   useEffect(() => {
     async function checkFailed() {
@@ -55,14 +71,16 @@ export function DesktopTopBar() {
           .select('id', { count: 'exact', head: true })
           .eq('status', 'failed')
 
-        if (!error && count && count > 0) {
-          setHasFailedMessages(true)
+        if (!error) {
+          setHasFailedMessages((count ?? 0) > 0)
         }
       } catch {
         // non-critical check
       }
     }
     checkFailed()
+    window.addEventListener('akshara:messages-updated', checkFailed)
+    return () => window.removeEventListener('akshara:messages-updated', checkFailed)
   }, [pathname])
 
   return (
@@ -139,14 +157,16 @@ export function MobileBottomNav() {
           .select('id', { count: 'exact', head: true })
           .eq('status', 'failed')
 
-        if (!error && count && count > 0) {
-          setHasFailedMessages(true)
+        if (!error) {
+          setHasFailedMessages((count ?? 0) > 0)
         }
       } catch {
         // non-critical check
       }
     }
     checkFailed()
+    window.addEventListener('akshara:messages-updated', checkFailed)
+    return () => window.removeEventListener('akshara:messages-updated', checkFailed)
   }, [pathname])
 
   return (

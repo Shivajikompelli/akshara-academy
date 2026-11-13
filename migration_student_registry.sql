@@ -7,9 +7,20 @@
 -- 1. message_log no longer points to guardians
 drop index if exists message_log_dedupe;
 alter table message_log drop column if exists guardian_id;
+alter table message_log add column if not exists fee_id uuid references fees(id) on delete set null;
+alter table message_log add column if not exists payment_id uuid references fee_payments(id) on delete set null;
+alter table message_log drop constraint if exists message_log_kind_check;
+alter table message_log add constraint message_log_kind_check
+  check (kind in ('absent_alert','fee_reminder','payment_receipt'));
+
 create unique index message_log_dedupe
   on message_log (student_id, kind, related_date)
-  where status <> 'failed';
+  where status <> 'failed' and kind in ('absent_alert', 'fee_reminder');
+
+drop index if exists message_log_payment_dedupe;
+create unique index message_log_payment_dedupe
+  on message_log (payment_id)
+  where payment_id is not null and status <> 'failed';
 
 -- 2. Remove guardians and batches
 drop table if exists guardians;

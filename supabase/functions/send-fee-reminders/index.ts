@@ -1,10 +1,55 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const ALLOWED_ORIGINS = new Set([
+  Deno.env.get('ALLOWED_ORIGIN') || 'https://akshara-academy-eta.vercel.app',
+  'http://localhost:3000',
+])
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || ''
+  const allowOrigin = ALLOWED_ORIGINS.has(origin)
+    ? origin
+    : 'https://akshara-academy-eta.vercel.app'
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  }
+}
+
+function safeCompareSecret(a: string, b: string): boolean {
+  const enc = new TextEncoder()
+  const bufA = enc.encode(a)
+  const bufB = enc.encode(b)
+  if (bufA.byteLength !== bufB.byteLength || bufA.byteLength === 0) return false
+  let diff = 0
+  for (let i = 0; i < bufA.byteLength; i++) {
+    diff |= bufA[i] ^ bufB[i]
+  }
+  return diff === 0
+}
+
+function isAuthorizedEdgeUser(user: {
+  email?: string | null
+  email_confirmed_at?: string | null
+  app_metadata?: Record<string, unknown>
+} | null): boolean {
+  if (!user || !user.email) return false
+  const appRole = user.app_metadata?.role
+  if (appRole === 'blocked' || appRole === 'disabled') return false
+
+  const rawAllowlist = Deno.env.get('ADMIN_ALLOWED_EMAILS') || ''
+  const allowedEmails = rawAllowlist
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (allowedEmails.length > 0 && !allowedEmails.includes(user.email.toLowerCase())) {
+    return false
+  }
+  return true
 }
 
 // Config constant: days after due_date to send reminders
@@ -53,6 +98,8 @@ function getDaysDifference(targetDate: string, baseDate: string): number {
 }
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -69,12 +116,19 @@ serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || supabaseAnonKey
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const cronSecret = Deno.env.get('CRON_SECRET') || ''
     const token = authHeader.replace('Bearer ', '').trim()
 
     let isAuthorized = false
 
-    if (token === supabaseServiceKey) {
+    // Never allow anon key to match service key check; use constant-time comparison
+    if (
+      token &&
+      token !== supabaseAnonKey &&
+      ((supabaseServiceKey && safeCompareSecret(token, supabaseServiceKey)) ||
+        (cronSecret && safeCompareSecret(token, cronSecret)))
+    ) {
       isAuthorized = true
     } else {
       const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -84,7 +138,7 @@ serve(async (req: Request) => {
         data: { user },
         error: userError,
       } = await userClient.auth.getUser()
-      if (!userError && user) {
+      if (!userError && user && isAuthorizedEdgeUser(user)) {
         isAuthorized = true
       }
     }
@@ -92,6 +146,14 @@ serve(async (req: Request) => {
     if (!isAuthorized) {
       return new Response(JSON.stringify({ error: 'Unauthorized: invalid or expired session' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!supabaseServiceKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY is missing in Edge Function runtime')
+      return new Response(JSON.stringify({ error: 'An internal server error occurred.' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -458,8 +520,7 @@ serve(async (req: Request) => {
     )
   } catch (error: unknown) {
     console.error('send-fee-reminders Edge Function error:', error)
-    const msg = error instanceof Error ? error.message : 'Internal Server Error'
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({ error: 'An internal server error occurred.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
