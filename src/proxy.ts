@@ -3,11 +3,27 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { isAuthorizedManager, safeCompareSecrets } from '@/lib/auth'
 
 function applySecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('X-DNS-Prefetch-Control', 'on')
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()')
   res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  res.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.facebook.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graph.facebook.com https://vercel.live",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+  )
   return res
 }
 

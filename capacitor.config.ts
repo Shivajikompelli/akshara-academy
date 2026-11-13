@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://akshara-academy-eta.vercel.app',
     cleartext: false,
+    allowNavigation: [
+      'akshara-academy-eta.vercel.app',
+      '*.supabase.co',
+      '*.vercel.app',
+    ],
   },
 };
 
