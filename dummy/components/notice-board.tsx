@@ -10,18 +10,21 @@ interface NoticeBoardProps {
 
 export function NoticeBoard({ announcements, onViewAll }: NoticeBoardProps) {
   return (
-    <div className="rounded-[24px] bg-white border border-[#E9D5FF]/80 p-5 sm:p-6 shadow-[0_8px_28px_rgba(91,69,224,0.06)]">
-      <div className="flex items-center justify-between pb-3.5 border-b border-[#EDEEF3]">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-10 items-center justify-center rounded-[12px] bg-[#FFFBEB] text-[#D97706]">
-            <Bell className="size-5" />
+    <section
+      aria-label="Academy Notice Board"
+      className="rounded-[26px] bg-white border border-[#C7D2FE]/70 p-5 sm:p-6 shadow-[0_10px_25px_-5px_rgba(79,70,229,0.06),0_8px_10px_-6px_rgba(79,70,229,0.03)]"
+    >
+      <div className="flex items-center justify-between pb-3.5 border-b border-[#EBEEF8]">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-[16px] bg-[#FFF7ED] text-[#EA580C] shadow-inner">
+            <Bell className="size-6 stroke-[2.2]" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#1F2438] tracking-tight">
+            <h2 className="text-base sm:text-lg font-black text-[#1E1B4B] tracking-tight">
               Academy Notice Board
             </h2>
-            <p className="text-xs font-semibold text-[#5A6378]">
-              Important updates from school management
+            <p className="text-xs font-semibold text-[#475569]">
+              Official circulars from school administration
             </p>
           </div>
         </div>
@@ -29,57 +32,57 @@ export function NoticeBoard({ announcements, onViewAll }: NoticeBoardProps) {
         <button
           type="button"
           onClick={onViewAll}
-          className="text-xs font-bold text-[#5B45E0] hover:underline flex items-center gap-1 cursor-pointer"
+          className="text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-[#4F46E5] rounded-[6px] focus-visible:outline-none"
         >
-          View All <ChevronRight className="size-3.5" />
+          View All <ChevronRight className="size-3.5 stroke-[2.5]" />
         </button>
       </div>
 
-      <div className="mt-3.5 space-y-3">
+      <div className="mt-4 space-y-3.5">
         {announcements.map((item) => (
           <div
             key={item.id}
-            className={`p-4 rounded-[18px] border transition-all ${
+            className={`p-4 sm:p-4.5 rounded-[20px] border transition-all duration-200 ease-out motion-reduce:transition-none ${
               item.isUrgent
-                ? 'bg-[#FFFBEB]/40 border-[#F59E0B]/40 hover:bg-[#FFFBEB]/70'
-                : 'bg-[#F8F9FE] border-[#E9D5FF]/50 hover:bg-white hover:border-[#5B45E0]/40'
+                ? 'bg-[#FFF7ED]/50 border-[#FDBA74] hover:bg-[#FFF7ED]'
+                : 'bg-[#F8F9FE] border-[#C7D2FE]/50 hover:bg-white hover:border-[#4F46E5]/40 hover:shadow-2xs'
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       item.isUrgent
-                        ? 'bg-[#FEF3C7] text-[#B45309]'
-                        : 'bg-[#EDEAFC] text-[#5B45E0]'
+                        ? 'bg-[#FFEDD5] text-[#C2410C]'
+                        : 'bg-[#EEF2FF] text-[#4F46E5]'
                     }`}
                   >
                     {item.category}
                   </span>
                   {item.isUrgent && (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#D97706]">
-                      <AlertCircle className="size-3" /> Important
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#EA580C]">
+                      <AlertCircle className="size-3.5 stroke-[2.5]" /> Priority Notice
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-sm font-bold text-[#1F2438] leading-snug">
+                <h3 className="text-sm sm:text-base font-bold text-[#1E1B4B] leading-snug">
                   {item.title}
                 </h3>
-                <p className="text-xs text-[#5A6378] leading-relaxed">
+                <p className="text-xs text-[#475569] leading-relaxed">
                   {item.description}
                 </p>
               </div>
 
-              <span className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-[#5A6378] bg-white/80 px-2 py-1 rounded-[8px] border border-[#EDEEF3]">
-                <Calendar className="size-3 text-[#5B45E0]" />
+              <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-[#475569] bg-white px-2.5 py-1 rounded-[10px] border border-[#EBEEF8] shadow-2xs">
+                <Calendar className="size-3.5 text-[#4F46E5]" />
                 {item.date}
               </span>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

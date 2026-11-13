@@ -176,3 +176,4 @@ export const MOCK_ANNOUNCEMENTS: AnnouncementItem[] = [
     category: 'Event',
   },
 ]
+
