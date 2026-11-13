@@ -228,7 +228,7 @@ export function PaymentHistoryDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px] w-[calc(100%-1.5rem)] sm:max-w-xl max-h-[88dvh] flex flex-col"
+          className="w-full max-w-xl max-h-[92dvh] sm:max-h-[88dvh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px]"
           showCloseButton={true}
         >
           {/* Fixed Header */}
@@ -251,7 +251,7 @@ export function PaymentHistoryDialog({
           </div>
 
           {/* Scrollable Body */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 space-y-5 overscroll-contain">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-5 overscroll-contain thin-scrollbar">
             {errorMsg && (
               <div className="p-3.5 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-[12px] border border-[var(--attention)]/30 flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0" />
@@ -470,7 +470,7 @@ export function PaymentHistoryDialog({
           </div>
 
           {/* Sticky Footer */}
-          <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               type="button"
               variant="outline"

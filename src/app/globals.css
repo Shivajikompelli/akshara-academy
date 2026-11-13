@@ -168,6 +168,26 @@ body {
   scrollbar-width: none;
 }
 
+/* Clean slim scrollbar for modal dialogs and dropdowns */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(91, 69, 224, 0.22);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 69, 224, 0.45);
+}
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91, 69, 224, 0.22) transparent;
+}
+
 /* Completely hide Next.js dev indicator ("N" logo), dev tools toolbar, and rendering animation overlays */
 nextjs-portal,
 [data-nextjs-dev-indicator],

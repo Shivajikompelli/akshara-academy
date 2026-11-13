@@ -726,7 +726,7 @@ export default function MessageLogPage() {
       {selectedLog && (
         <ErrorBoundary fallbackTitle="Message Preview Error">
           <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-          <DialogContent className="w-[calc(100%-1rem)] max-w-md sm:max-w-lg max-h-[92dvh] flex flex-col p-0 bg-white rounded-[24px] border border-[var(--card-border)] shadow-xl overflow-hidden">
+          <DialogContent className="w-full max-w-md sm:max-w-lg max-h-[92dvh] flex flex-col p-0 bg-white rounded-[24px] border border-[var(--card-border)] shadow-xl overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-[var(--card-border)]/70 bg-white shrink-0">
               <DialogHeader>
                 <div className="flex items-center gap-2.5">
@@ -745,7 +745,7 @@ export default function MessageLogPage() {
               </DialogHeader>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 thin-scrollbar">
               {/* WhatsApp Chat Preview Bubble */}
               <div className="p-3.5 sm:p-4 rounded-[20px] bg-[#EFEAE2] border border-[#DDD6CE] space-y-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">

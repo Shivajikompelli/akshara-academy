@@ -167,7 +167,7 @@ export function SendFeeRemindersDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px] w-[calc(100%-1.5rem)] sm:max-w-xl max-h-[88dvh] flex flex-col"
+        className="w-full max-w-xl max-h-[92dvh] sm:max-h-[88dvh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px]"
         showCloseButton={true}
       >
         {/* Fixed Header */}
@@ -194,7 +194,7 @@ export function SendFeeRemindersDialog({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 space-y-4 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-4 overscroll-contain thin-scrollbar">
 
         {/* Loading State */}
         {loadingPreview ? (
@@ -398,7 +398,7 @@ export function SendFeeRemindersDialog({
       </div>
 
       {/* Sticky Footer (Always Visible on Screen) */}
-      <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
+      <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-[var(--card-border)]/80 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.03)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {result ? (
           <Button
             type="button"
