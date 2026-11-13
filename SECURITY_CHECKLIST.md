@@ -35,3 +35,4 @@ Use this checklist before releasing every new version of the Web Portal or Andro
 - [ ] Confirm database indexes from `migration_indexes_perf.sql` are active in the production database.
 - [ ] Keep initial JS bundle under 150 KB gzipped per route.
 - [ ] Verify all modal dialogs fit within `max-h-[88dvh]` with permanently docked action footers.
+

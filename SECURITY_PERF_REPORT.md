@@ -61,3 +61,4 @@ All confirmed vulnerabilities and performance bottlenecks have been fixed on bra
    - Open Supabase SQL Editor and execute [migration_indexes_perf.sql](file:///c:/Users/new/akshara%20app/migration_indexes_perf.sql).
 3. **Environment Secrets Rotation:**
    - No real secrets were found committed in git history. Verify that production `SUPABASE_SERVICE_ROLE_KEY` and `WHATSAPP_TOKEN` remain securely stored in Vercel and Supabase Vault environment variables only.
+
