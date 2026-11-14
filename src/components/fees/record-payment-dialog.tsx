@@ -100,12 +100,15 @@ function RecordPaymentForm({
       })
 
       const orderJson = await orderRes.json()
+      const orderData = orderJson.data || orderJson
 
-      if (!orderRes.ok || !orderJson.data) {
-        throw new Error(orderJson.error || 'Failed to initialize Razorpay checkout.')
+      if (!orderRes.ok || !orderData?.orderId) {
+        const errorMsg =
+          orderJson.error?.message ||
+          (typeof orderJson.error === 'string' ? orderJson.error : null) ||
+          'Failed to initialize Razorpay checkout.'
+        throw new Error(errorMsg)
       }
-
-      const orderData = orderJson.data
 
       // Step B: Handle Test Simulation Mode (when API keys are placeholders)
       if (orderData.isMock) {
@@ -129,13 +132,18 @@ function RecordPaymentForm({
         })
 
         const verifyJson = await verifyRes.json()
+        const verifyData = verifyJson.data || verifyJson
 
-        if (!verifyRes.ok || !verifyJson.data?.success) {
-          throw new Error(verifyJson.error || 'Payment recording failed in test simulation.')
+        if (!verifyRes.ok || !verifyData?.success) {
+          const vMsg =
+            verifyJson.error?.message ||
+            (typeof verifyJson.error === 'string' ? verifyJson.error : null) ||
+            'Payment recording failed in test simulation.'
+          throw new Error(vMsg)
         }
 
         toast.success(
-          `Payment of ${formatCurrency(amount)} recorded via UPI (${verifyJson.data.reference})!`
+          `Payment of ${formatCurrency(amount)} recorded via UPI (${verifyData.reference})!`
         )
         onPaymentRecorded()
         onClose()
@@ -199,9 +207,14 @@ function RecordPaymentForm({
             })
 
             const verifyJson = await verifyRes.json()
+            const verifyData = verifyJson.data || verifyJson
 
-            if (!verifyRes.ok || !verifyJson.data?.success) {
-              throw new Error(verifyJson.error || 'Payment verification failed.')
+            if (!verifyRes.ok || !verifyData?.success) {
+              const vMsg =
+                verifyJson.error?.message ||
+                (typeof verifyJson.error === 'string' ? verifyJson.error : null) ||
+                'Payment verification failed.'
+              throw new Error(vMsg)
             }
 
             toast.success(
