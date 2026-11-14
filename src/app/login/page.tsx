@@ -89,14 +89,11 @@ export default function LoginPage() {
       if (data.success || data.user) {
         setIsPostLogin(true)
         try {
-          sessionStorage.setItem('akshara_post_login_start', String(Date.now()))
+          sessionStorage.setItem('akshara_post_login_dock', '1')
         } catch {
           // Ignore
         }
         router.prefetch('/')
-        setTimeout(() => {
-          router.push('/?post_login=1')
-        }, 450)
       } else {
         setErrorMsg('Sign-in could not be verified. Please try again.')
         setIsLoading(false)
@@ -117,8 +114,16 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 pt-safe pb-safe bg-[var(--app-bg)] text-[var(--text)] overflow-hidden">
-      {/* Post-Login Smooth Centered Logo Animation */}
-      {isPostLogin && <PostLoginTransition active={true} isDashboardDock={false} />}
+      {/* Post-Login Smooth Centered Logo Animation (Phase 1 & 2: 750ms total) */}
+      {isPostLogin && (
+        <PostLoginTransition
+          mode="login"
+          active={true}
+          onComplete={() => {
+            router.push('/?post_login=1')
+          }}
+        />
+      )}
 
       {/* Main Login View (fades out 200ms ease-out on successful auth) */}
       <div

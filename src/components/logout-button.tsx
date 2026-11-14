@@ -23,11 +23,17 @@ export function LogoutButton({
   async function handleLogout() {
     try {
       setIsLoggingOut(true)
+      try {
+        sessionStorage.removeItem('akshara_post_login_dock')
+        sessionStorage.removeItem('akshara_post_login_start')
+        sessionStorage.removeItem('akshara_post_login')
+      } catch {
+        // Ignore
+      }
       const supabase = createClient()
       await fetch('/api/auth/logout', { method: 'POST' })
       await supabase.auth.signOut()
-      router.replace('/login')
-      router.refresh()
+      window.location.href = '/login'
     } catch (err) {
       console.error('Logout error:', err)
       setIsLoggingOut(false)

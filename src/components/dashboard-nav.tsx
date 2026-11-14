@@ -53,14 +53,13 @@ export function DesktopTopBar() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        router.replace('/login')
-        router.refresh()
+        window.location.href = '/login'
       }
     })
     return () => {
       subscription.unsubscribe()
     }
-  }, [router])
+  }, [])
 
   useEffect(() => {
     async function checkFailed() {

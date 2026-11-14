@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { InitialsAvatar, getInitials } from '@/components/ui/initials-avatar'
 import { LogOut, Building2, Mail, Clock, ShieldCheck } from 'lucide-react'
@@ -18,6 +18,27 @@ export function AccountMenu() {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Ensure dropdown is closed and reset on route changes
+  useEffect(() => {
+    setOpen(false)
+    setLoading(false)
+  }, [pathname])
+
+  // Reset menu when auth state changes (sign in or sign out)
+  useEffect(() => {
+    const supabase = createClient()
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+        setOpen(false)
+        setLoading(false)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
     async function loadUser() {
@@ -68,14 +89,23 @@ export function AccountMenu() {
   }, [open, handleClose])
 
   async function handleLogout() {
+    setOpen(false)
     setLoading(true)
+    try {
+      sessionStorage.removeItem('akshara_post_login_start')
+      sessionStorage.removeItem('akshara_post_login')
+      sessionStorage.removeItem('akshara_post_login_dock')
+    } catch {
+      // Ignore
+    }
+
     const supabase = createClient()
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
       await supabase.auth.signOut()
       toast.success('Signed out securely')
-      router.replace('/login')
-      router.refresh()
+      // Hard navigation ensures clean flush of all React memory & layout cache
+      window.location.href = '/login'
     } catch (err: unknown) {
       console.error('Logout error:', err)
       toast.error('Failed to log out')

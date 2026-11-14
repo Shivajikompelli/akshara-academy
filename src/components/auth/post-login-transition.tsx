@@ -3,24 +3,29 @@
 import React, { useState, useEffect, useRef } from 'react'
 
 interface PostLoginTransitionProps {
+  /** Mode: 'login' runs Phase 1 & 2 (0-750ms). 'dock' runs Phase 3 (750-1100ms / 350ms). */
+  mode?: 'login' | 'dock'
   /** If provided, manually control whether the transition overlay is visible */
   active?: boolean
-  /** Callback fired when the entire sequence finishes (~1.1s) */
+  /** Callback fired when this phase or sequence completes */
   onComplete?: () => void
-  /** If true, runs the dock-in phase directly on the dashboard */
+  /** Backward-compatibility alias for mode='dock' */
   isDashboardDock?: boolean
 }
 
 export function PostLoginTransition({
+  mode = 'login',
   active = true,
   onComplete,
   isDashboardDock = false,
 }: PostLoginTransitionProps) {
-  // Phase 1: 0ms-250ms (Center & Scale 1.2x)
-  // Phase 2: 250ms-750ms (SVG Micro-animation + "Preparing your classes...")
-  // Phase 3: 750ms-1100ms (Dock to top-left header & 0.5x scale)
-  const [phase, setPhase] = useState<'center' | 'micro' | 'dock' | 'done'>(
-    isDashboardDock ? 'micro' : 'center'
+  const effectiveMode = isDashboardDock ? 'dock' : mode
+
+  // Phases:
+  // For 'login': 'center' (0-250ms) -> 'micro' (250-750ms) -> done
+  // For 'dock': 'dock-start' (0-30ms) -> 'docking' (30-330ms) -> done
+  const [phase, setPhase] = useState<'center' | 'micro' | 'dock-start' | 'docking' | 'done'>(
+    effectiveMode === 'dock' ? 'dock-start' : 'center'
   )
   const [dockCoords, setDockCoords] = useState<{ x: number; y: number; scale: number }>({
     x: 0,
@@ -38,7 +43,7 @@ export function PostLoginTransition({
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     if (prefersReducedMotion) {
-      // Accessibility fast path: 150ms gentle cross-fade
+      // Accessibility fast path: quick 150ms cross-fade
       const timer = setTimeout(() => {
         setPhase('done')
         onComplete?.()
@@ -46,93 +51,98 @@ export function PostLoginTransition({
       return () => clearTimeout(timer)
     }
 
-    // Determine starting offset if coming from login page via sessionStorage
-    let elapsed = 0
-    try {
-      const storedStart = sessionStorage.getItem('akshara_post_login_start')
-      if (storedStart) {
-        elapsed = Math.max(0, Date.now() - Number(storedStart))
+    if (effectiveMode === 'login') {
+      // Phase 1 (0 - 250ms): Form exit and logo center (1.2x)
+      // Phase 2 (250ms - 750ms): Centered micro-animation with SVG ring draw + cap pulse + subtext
+      const tMicro = setTimeout(() => {
+        setPhase('micro')
+      }, 250)
+
+      // At 750ms: Complete Phase 2 on login page and trigger handoff
+      const tDone = setTimeout(() => {
+        if (hasFinishedRef.current) return
+        hasFinishedRef.current = true
+        onComplete?.()
+      }, 750)
+
+      return () => {
+        clearTimeout(tMicro)
+        clearTimeout(tDone)
       }
-    } catch {
-      // Ignore storage errors
-    }
+    } else {
+      // Phase 3: Shared-element dock on the dashboard (350ms total)
+      // 0ms - 30ms: Render centered at 1.2x to match the login screen perfectly
+      // 30ms: Measure target header logo and animate dock to top-left (300ms)
+      const tDock = setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          // Find the visible header logo (desktop or mobile)
+          const targets = document.querySelectorAll('[data-header-logo]')
+          let visibleTarget: HTMLElement | null = null
+          for (const el of Array.from(targets)) {
+            const htmlEl = el as HTMLElement
+            if (htmlEl.offsetParent !== null || htmlEl.getBoundingClientRect().height > 0) {
+              visibleTarget = htmlEl
+              break
+            }
+          }
 
-    // Step 1: Center & Scale up (0 - 250ms)
-    const tMicro = setTimeout(() => {
-      setPhase('micro')
-    }, Math.max(0, 250 - elapsed))
+          if (visibleTarget) {
+            const rect = visibleTarget.getBoundingClientRect()
+            const targetX = rect.left + rect.width / 2
+            const targetY = rect.top + rect.height / 2
+            const centerX = window.innerWidth / 2
+            const centerY = window.innerHeight / 2
 
-    // Step 2: Begin Docking to Top-Left Header (at 750ms)
-    const tDock = setTimeout(() => {
-      // Compute exact pixel coordinates of destination header logo
-      if (typeof window !== 'undefined') {
-        const targetEl =
-          (document.querySelector('[data-header-logo]') as HTMLElement) ||
-          (document.getElementById('desktop-header-logo') as HTMLElement) ||
-          (document.getElementById('mobile-header-logo') as HTMLElement)
-
-        if (targetEl) {
-          const rect = targetEl.getBoundingClientRect()
-          const targetX = rect.left + rect.width / 2
-          const targetY = rect.top + rect.height / 2
-          const centerX = window.innerWidth / 2
-          const centerY = window.innerHeight / 2
-
-          setDockCoords({
-            x: targetX - centerX,
-            y: targetY - centerY,
-            scale: 0.5,
-          })
-        } else {
-          // Fallback based on viewport
-          const isMobile = window.innerWidth < 768
-          const targetX = isMobile ? 34 : Math.max(48, (window.innerWidth - 1100) / 2 + 48)
-          const targetY = isMobile ? 32 : 36
-          setDockCoords({
-            x: targetX - window.innerWidth / 2,
-            y: targetY - window.innerHeight / 2,
-            scale: 0.5,
-          })
+            setDockCoords({
+              x: targetX - centerX,
+              y: targetY - centerY,
+              scale: 0.5,
+            })
+          } else {
+            // Fallback based on responsive viewport
+            const isMobile = window.innerWidth < 768
+            const targetX = isMobile ? 34 : Math.max(48, (window.innerWidth - 1100) / 2 + 48)
+            const targetY = isMobile ? 32 : 36
+            setDockCoords({
+              x: targetX - window.innerWidth / 2,
+              y: targetY - window.innerHeight / 2,
+              scale: 0.5,
+            })
+          }
         }
+
+        setPhase('docking')
+        // Fade out background canvas as logo docks
+        setTimeout(() => {
+          setOverlayOpacity(0)
+        }, 50)
+      }, 30)
+
+      // At 350ms: Docking sequence finishes, cards are fully revealed
+      const tDone = setTimeout(() => {
+        if (hasFinishedRef.current) return
+        hasFinishedRef.current = true
+        setPhase('done')
+        onComplete?.()
+      }, 350)
+
+      return () => {
+        clearTimeout(tDock)
+        clearTimeout(tDone)
       }
-
-      setPhase('dock')
-      // Fade out background canvas as logo docks
-      setTimeout(() => {
-        setOverlayOpacity(0)
-      }, 50)
-    }, Math.max(0, 750 - elapsed))
-
-    // Step 3: Complete Sequence & Cleanup (at 1100ms)
-    const tDone = setTimeout(() => {
-      if (hasFinishedRef.current) return
-      hasFinishedRef.current = true
-      setPhase('done')
-      try {
-        sessionStorage.removeItem('akshara_post_login_start')
-      } catch {
-        // Ignore
-      }
-      onComplete?.()
-    }, Math.max(100, 1100 - elapsed))
-
-    return () => {
-      clearTimeout(tMicro)
-      clearTimeout(tDock)
-      clearTimeout(tDone)
     }
-  }, [active, onComplete])
+  }, [active, effectiveMode, onComplete])
 
   if (!active || phase === 'done') {
     return null
   }
 
-  const isDocking = phase === 'dock'
+  const isDocking = phase === 'docking'
 
-  // Dynamic hardware-accelerated transform style
+  // Hardware-accelerated transform style
   const logoTransform = isDocking
     ? `translate3d(${dockCoords.x}px, ${dockCoords.y}px, 0) scale(${dockCoords.scale})`
-    : phase === 'micro' || phase === 'center'
+    : phase === 'micro' || phase === 'center' || phase === 'dock-start'
     ? 'translate3d(0, 0, 0) scale(1.2)'
     : 'translate3d(0, 0, 0) scale(1)'
 
