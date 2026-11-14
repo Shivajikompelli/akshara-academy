@@ -23,9 +23,40 @@ import {
   Edit2,
   AlertTriangle,
   Calendar,
+  Eye,
+  Send,
+  MessageSquare,
+  Loader2,
+  CheckCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FeeSummaryRow, FeePayment } from '@/types/database'
+
+function getReceiptPreviewUrl(fee: FeeSummaryRow, p: FeePayment): string {
+  const receiptCode = p.reference?.trim() || `REC-${p.id.slice(0, 6).toUpperCase()}`
+  const params = new URLSearchParams({
+    student: fee.full_name || 'Student',
+    class: fee.class_level || 'Student',
+    amount: String(Math.round(Number(p.amount) || 0)),
+    period: formatPeriod(fee.period),
+    date: formatDate(p.paid_on),
+    receipt: receiptCode,
+    mode: (p.mode || 'CASH').toUpperCase(),
+  })
+  return `/api/receipt-image?${params.toString()}`
+}
+
+function getReceiptMessageText(fee: FeeSummaryRow, p: FeePayment): string {
+  const studentName = fee.full_name || 'Student'
+  const amountNum = Math.round(Number(p.amount) || 0)
+  const periodStr = formatPeriod(fee.period)
+  const paidDateStr = formatDate(p.paid_on)
+  const modeLabel = (p.mode || 'CASH').toUpperCase()
+  const receiptCode = p.reference?.trim() || `REC-${p.id.slice(0, 6).toUpperCase()}`
+  const receiptRef = `${receiptCode} (${modeLabel})`
+
+  return `Dear Parent,\nThis is a payment confirmation for ${studentName}.\nWe have received the tuition fee of ₹${amountNum.toLocaleString('en-IN')} for ${periodStr} on ${paidDateStr} (Receipt: ${receiptRef}).\nThank you for your payment.\n\n– Akshara Academy`
+}
 
 interface PaymentHistoryDialogProps {
   open: boolean
@@ -54,6 +85,10 @@ export function PaymentHistoryDialog({
   // Delete Payment Confirmation State
   const [paymentToDelete, setPaymentToDelete] = useState<FeePayment | null>(null)
   const [deletingPayment, setDeletingPayment] = useState(false)
+
+  // Send WhatsApp Receipt & Preview States
+  const [sendingReceiptId, setSendingReceiptId] = useState<string | null>(null)
+  const [previewPayment, setPreviewPayment] = useState<FeePayment | null>(null)
 
   const feeId = fee?.fee_id
   const studentId = fee?.student_id
@@ -224,6 +259,44 @@ export function PaymentHistoryDialog({
     }
   }
 
+  // Send / Resend WhatsApp Receipt action
+  async function handleSendReceipt(p: FeePayment) {
+    if (!fee) return
+    setSendingReceiptId(p.id)
+    try {
+      const res = await fetch('/api/send-payment-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: fee.student_id,
+          fee_id: fee.fee_id,
+          payment_id: p.id,
+          amount_paid: Number(p.amount),
+          paid_on: p.paid_on,
+          period: fee.period,
+          mode: p.mode,
+          reference: p.reference?.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (data?.sent) {
+        toast.success(
+          data.dry_run
+            ? `Receipt (${data.receipt_no}) logged in Messages (Dry Run).`
+            : `WhatsApp receipt (${data.receipt_no}) sent to parent!`
+        )
+      } else if (data?.skipped_no_consent) {
+        toast.warning(data.message || 'Parent has not opted into WhatsApp messages.')
+      } else {
+        toast.error(data?.error || 'Failed to send receipt.')
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Network error while sending receipt.')
+    } finally {
+      setSendingReceiptId(null)
+    }
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -386,7 +459,36 @@ export function PaymentHistoryDialog({
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {/* Preview Receipt */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPreviewPayment(p)}
+                          className="size-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+                          title="Preview receipt image & WhatsApp message"
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+
+                        {/* Send/Resend WhatsApp Receipt */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSendReceipt(p)}
+                          disabled={sendingReceiptId === p.id}
+                          className="size-8 text-[#25D366] hover:text-[#128C7E] hover:bg-[#25D366]/10 cursor-pointer"
+                          title="Send WhatsApp receipt to parent"
+                        >
+                          {sendingReceiptId === p.id ? (
+                            <Loader2 className="size-4 animate-spin text-slate-500" />
+                          ) : (
+                            <Send className="size-4" />
+                          )}
+                        </Button>
+
                         {/* Delete payment action */}
                         <Button
                           type="button"
@@ -524,6 +626,99 @@ export function PaymentHistoryDialog({
                 {deletingPayment ? 'Deleting...' : 'Yes, Delete Payment'}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Receipt Preview & WhatsApp Message Dialog */}
+      {previewPayment && fee && (
+        <Dialog
+          open={!!previewPayment}
+          onOpenChange={(isOpen) => !isOpen && setPreviewPayment(null)}
+        >
+          <DialogContent
+            className="w-full max-w-lg max-h-[92dvh] sm:max-h-[88dvh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[var(--card-border)] shadow-2xl rounded-[20px] sm:rounded-[24px]"
+            showCloseButton={true}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[var(--card-border)]/80 bg-white shrink-0 pr-12">
+              <DialogHeader className="gap-1 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-[14px] bg-[#E8F8EE] text-[#25D366] flex items-center justify-center shrink-0">
+                    <MessageSquare className="size-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-base font-bold text-[var(--text)] tracking-tight">
+                      Receipt Preview
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-[var(--text-secondary)] truncate">
+                      {fee.full_name} {fee.phone ? `• ${fee.phone}` : ''}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+            </div>
+
+            {/* Scrollable Chat Preview */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 thin-scrollbar">
+              <div className="p-3.5 sm:p-4 rounded-[20px] bg-[#EFEAE2] border border-[#DDD6CE]">
+                <div className="max-w-[95%] sm:max-w-[92%] ml-auto bg-[var(--whatsapp-bg)] text-[var(--whatsapp-text)] rounded-[18px] rounded-tr-[4px] p-3 shadow-sm space-y-2.5 border border-[var(--whatsapp)]/20">
+                  {/* Receipt PNG Image */}
+                  <div className="rounded-[12px] overflow-hidden border border-[var(--whatsapp)]/20 bg-white shadow-2xs">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getReceiptPreviewUrl(fee, previewPayment)}
+                      alt={`Akshara Academy Fee Receipt for ${fee.full_name}`}
+                      className="w-full h-auto block"
+                    />
+                  </div>
+
+                  {/* Template text */}
+                  <p className="text-sm font-normal text-slate-900 leading-relaxed whitespace-pre-wrap px-1">
+                    {getReceiptMessageText(fee, previewPayment)}
+                  </p>
+
+                  <div className="flex items-center justify-end gap-1.5 text-xs text-[var(--whatsapp-text)] font-medium pt-1">
+                    <span>Template: payment_receipt_v1</span>
+                    <CheckCheck className="size-4 stroke-[2.5]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 sm:p-4 border-t border-[var(--card-border)]/70 bg-white shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPreviewPayment(null)}
+                className="min-h-[44px] px-4 rounded-[12px] font-bold text-xs sm:text-sm cursor-pointer border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)]"
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  const targetPayment = previewPayment
+                  await handleSendReceipt(targetPayment)
+                  setPreviewPayment(null)
+                }}
+                disabled={sendingReceiptId === previewPayment.id}
+                className="min-h-[44px] px-5 rounded-[12px] font-bold text-xs sm:text-sm bg-[#25D366] hover:bg-[#128C7E] text-white flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
+              >
+                {sendingReceiptId === previewPayment.id ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Sending Receipt...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="size-4" />
+                    <span>Send via WhatsApp</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}
