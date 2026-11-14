@@ -356,62 +356,45 @@ function RecordPaymentForm({
 
   return (
     <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-full bg-[var(--present-bg)] text-[var(--present-text)]">
-            <CreditCard className="size-5" />
+      <DialogHeader className="space-y-1">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-[var(--present-bg)] text-[var(--present-text)] flex items-center justify-center shrink-0 shadow-2xs">
+            <CreditCard className="size-5 stroke-[2.2]" />
           </div>
-          <DialogTitle className="text-lg font-bold text-[var(--text)]">
-            Record Fee Payment
-          </DialogTitle>
+          <div>
+            <DialogTitle className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-tight">
+              Record Fee Payment
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[var(--text-secondary)]">
+              {fee.full_name} • {fee.class_level || 'Student'}
+            </DialogDescription>
+          </div>
         </div>
-        <DialogDescription className="text-[var(--text-secondary)] text-xs">
-          Record a fee receipt for <strong>{fee.full_name}</strong> (
-          {fee.class_level || 'Student'})
-        </DialogDescription>
       </DialogHeader>
 
       {errorMsg && (
-        <div className="p-3 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-lg border border-[var(--attention)]/30 flex items-start gap-2">
+        <div className="p-3 bg-[var(--attention-bg)] text-[var(--attention-text)] text-xs rounded-xl border border-[var(--attention)]/30 flex items-start gap-2">
           <AlertCircle className="size-4 text-[var(--attention-text)] shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Student Fee Context */}
-      <div className="bg-[var(--primary-soft)]/40 p-3.5 rounded-lg border border-[var(--card-border)] space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-[var(--text-secondary)]">Fee Period</span>
-          <span className="font-semibold text-[var(--text)]">
+      {/* Sleek Fee Summary Strip */}
+      <div className="bg-[var(--primary-soft)]/50 p-3.5 sm:p-4 rounded-2xl border border-[var(--card-border)]/80 flex items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
             {formatPeriod(fee.period)}
           </span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-[var(--text-secondary)]">Due Date</span>
-          <span className="font-semibold text-[var(--text)]">
-            {formatDate(fee.due_date)}
+          <span className="text-xs text-[var(--text)] font-medium">
+            Due {formatDate(fee.due_date)}
+            {fee.amount_paid > 0 && ` • Paid ${formatCurrency(fee.amount_paid)}`}
           </span>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--card-border)]/60 text-xs">
-          <div>
-            <span className="text-[var(--text-secondary)] block text-xs">Total Due</span>
-            <span className="font-semibold text-[var(--text)]">
-              {formatCurrency(fee.amount_due)}
-            </span>
-          </div>
-          <div>
-            <span className="text-[var(--text-secondary)] block text-xs">Paid So Far</span>
-            <span className="font-semibold text-[var(--present-text)]">
-              {formatCurrency(fee.amount_paid)}
-            </span>
-          </div>
-          <div>
-            <span className="text-[var(--text-secondary)] block text-xs">Balance</span>
-            <span className="font-bold text-[var(--attention-text)]">
-              {formatCurrency(fee.balance)}
-            </span>
-          </div>
+        <div className="text-right">
+          <span className="text-[11px] text-[var(--text-secondary)] block">Remaining Balance</span>
+          <span className="text-base sm:text-lg font-extrabold text-[var(--attention-text)]">
+            {formatCurrency(fee.balance)}
+          </span>
         </div>
       </div>
 
@@ -422,7 +405,7 @@ function RecordPaymentForm({
             <Label htmlFor="amount" className="text-xs font-semibold text-[var(--text)]">
               Payment Amount (₹) *
             </Label>
-            {fee.balance > 0 && (
+            {fee.balance > 0 && amount !== fee.balance && (
               <button
                 type="button"
                 onClick={() => setAmount(fee.balance)}
@@ -433,7 +416,7 @@ function RecordPaymentForm({
             )}
           </div>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--text-secondary)] font-bold">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[var(--text-secondary)] font-bold text-base">
               ₹
             </span>
             <Input
@@ -450,23 +433,22 @@ function RecordPaymentForm({
                   setConfirmOverpayment(false)
                 }
               }}
-              className="pl-8 h-11 text-sm font-bold text-[var(--text)]"
+              className="pl-9 h-12 text-base font-bold text-[var(--text)] rounded-xl"
               disabled={loading || razorpayLoading}
             />
           </div>
 
           {/* Overpayment warning & confirmation */}
           {isOverpayment ? (
-            <div className="p-3 bg-[var(--attention-bg)] border border-[var(--attention)]/40 rounded-lg text-[var(--attention-text)] text-xs space-y-2">
+            <div className="p-3 bg-[var(--attention-bg)] border border-[var(--attention)]/40 rounded-xl text-[var(--attention-text)] text-xs space-y-2">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="size-4 text-[var(--attention-text)] shrink-0 mt-0.5" />
                 <p>
                   <strong>Overpayment warning:</strong> Amount (
-                  {formatCurrency(amount)}) is greater than the outstanding
-                  balance ({formatCurrency(fee.balance)}).
+                  {formatCurrency(amount)}) exceeds outstanding balance ({formatCurrency(fee.balance)}).
                 </p>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-[var(--attention-text)] pt-1">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-[var(--attention-text)] pt-0.5">
                 <input
                   type="checkbox"
                   checked={confirmOverpayment}
@@ -477,9 +459,9 @@ function RecordPaymentForm({
               </label>
             </div>
           ) : amount < fee.balance && amount > 0 ? (
-            <p className="text-xs text-[var(--attention-text)] font-medium">
-              Partial payment: Remaining balance will be{' '}
-              {formatCurrency(fee.balance - amount)}.
+            <p className="text-[11px] text-[var(--text-secondary)] font-medium">
+              Partial payment: Remaining balance after payment will be{' '}
+              <strong>{formatCurrency(fee.balance - amount)}</strong>.
             </p>
           ) : null}
         </div>
@@ -489,16 +471,16 @@ function RecordPaymentForm({
           <Label className="text-xs font-semibold text-[var(--text)]">
             Payment Mode *
           </Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             <button
               type="button"
               onClick={() => {
                 setMode('upi')
                 setIsExternalUpi(false)
               }}
-              className={`p-2.5 rounded-[14px] text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+              className={`p-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'upi'
-                  ? 'bg-[#5B45E0] text-white border-[#5B45E0] shadow-sm ring-2 ring-[#5B45E0]/20'
+                  ? 'bg-[#5B45E0] text-white border-[#5B45E0] shadow-sm'
                   : 'bg-white text-[var(--text)] border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
@@ -509,9 +491,9 @@ function RecordPaymentForm({
             <button
               type="button"
               onClick={() => setMode('cash')}
-              className={`p-2.5 rounded-[14px] text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+              className={`p-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'cash'
-                  ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm ring-2 ring-[var(--primary)]/20'
+                  ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm'
                   : 'bg-white text-[var(--text)] border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
@@ -522,9 +504,9 @@ function RecordPaymentForm({
             <button
               type="button"
               onClick={() => setMode('bank')}
-              className={`p-2.5 rounded-[14px] text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+              className={`p-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'bank'
-                  ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm ring-2 ring-[var(--primary)]/20'
+                  ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm'
                   : 'bg-white text-[var(--text)] border-[var(--card-border)] hover:bg-[var(--primary-soft)]'
               }`}
             >
@@ -534,35 +516,24 @@ function RecordPaymentForm({
           </div>
         </div>
 
-        {/* Razorpay UPI Info Card */}
+        {/* Razorpay UPI Note & External UPI switch */}
         {isRazorpayActive && (
-          <div className="p-3.5 rounded-[14px] bg-[#F5F3FF] border border-[#DDD6FE] text-xs space-y-2">
-            <div className="flex items-center justify-between text-[#5B45E0]">
-              <span className="font-bold flex items-center gap-1.5">
-                <Sparkles className="size-3.5" />
-                Instant UPI QR & Apps
-              </span>
-              <span className="text-[11px] font-medium bg-white px-2 py-0.5 rounded-full border border-[#DDD6FE]">
-                Auto-Verified
-              </span>
-            </div>
-            <p className="text-slate-600 leading-relaxed text-[11px]">
-              Opens on-screen dynamic UPI QR code. Parents can scan using <strong>Google Pay, PhonePe, Paytm, or BHIM</strong>.
-            </p>
-            <div className="pt-1 flex items-center justify-between border-t border-[#DDD6FE]/60">
-              <span className="text-[11px] text-slate-500">Already collected via external QR?</span>
-              <button
-                type="button"
-                onClick={() => setIsExternalUpi(true)}
-                className="text-[11px] font-bold text-[#5B45E0] hover:underline cursor-pointer"
-              >
-                Enter UPI Ref manually
-              </button>
-            </div>
+          <div className="px-3.5 py-2.5 rounded-xl bg-[#F5F3FF] border border-[#DDD6FE] text-xs flex items-center justify-between gap-2">
+            <span className="text-[11px] text-[#5B45E0] font-medium flex items-center gap-1.5">
+              <Sparkles className="size-3.5 shrink-0" />
+              Dynamic QR (GPay, PhonePe, Paytm, BHIM)
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsExternalUpi(true)}
+              className="text-[11px] font-bold text-[#5B45E0] hover:underline cursor-pointer shrink-0"
+            >
+              External UPI Ref?
+            </button>
           </div>
         )}
 
-        {/* External UPI or Bank / Cash Reference */}
+        {/* External UPI / Bank Transfer / Cash Note input */}
         {(!isRazorpayActive || mode !== 'upi') && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -571,10 +542,10 @@ function RecordPaymentForm({
                 className="text-xs font-semibold text-[var(--text)]"
               >
                 {mode === 'cash'
-                  ? 'Receipt / Cash Note (Optional)'
+                  ? 'Cash Receipt / Notes (Optional)'
                   : mode === 'upi'
-                  ? 'External UPI Reference (UTR / Txn ID)'
-                  : 'Bank Transfer / Cheque Reference *'}
+                  ? 'External UPI Reference (UTR)'
+                  : 'Bank Transfer Reference *'}
               </Label>
               {mode === 'upi' && isExternalUpi && (
                 <button
@@ -582,7 +553,7 @@ function RecordPaymentForm({
                   onClick={() => setIsExternalUpi(false)}
                   className="text-xs text-[#5B45E0] hover:underline font-semibold cursor-pointer"
                 >
-                  Switch back to Razorpay QR
+                  Back to Razorpay QR
                 </button>
               )}
             </div>
@@ -593,12 +564,12 @@ function RecordPaymentForm({
                 mode === 'cash'
                   ? 'e.g. Paid in cash at office'
                   : mode === 'upi'
-                  ? 'e.g. 12-digit UTR or Txn ID'
+                  ? 'e.g. 12-digit UTR number'
                   : 'e.g. IMPS/NEFT Ref #, Cheque #'
               }
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              className="h-11 text-sm"
+              className="h-11 text-sm rounded-xl"
               disabled={loading || razorpayLoading}
             />
           </div>
@@ -617,15 +588,14 @@ function RecordPaymentForm({
               max={todayStr}
               value={paidOn}
               onChange={(e) => setPaidOn(e.target.value)}
-              className="h-11 text-sm"
+              className="h-11 text-sm rounded-xl"
               disabled={loading || razorpayLoading}
             />
-            <p className="text-xs text-[var(--text-secondary)]">Future dates are blocked.</p>
           </div>
         )}
 
         {/* Send WhatsApp Receipt Toggle */}
-        <label className="flex items-center gap-3 p-3 rounded-[12px] bg-[var(--whatsapp-bg)] border border-[var(--whatsapp)]/30 cursor-pointer select-none">
+        <label className="flex items-center gap-3 p-3 rounded-xl bg-[var(--whatsapp-bg)] border border-[var(--whatsapp)]/30 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={sendReceipt}
@@ -638,19 +608,16 @@ function RecordPaymentForm({
               <MessageSquare className="size-3.5 text-[var(--whatsapp)] shrink-0" />
               <span>Send WhatsApp payment receipt to parent</span>
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
-              Sends branded receipt card & confirmation message immediately
-            </span>
           </div>
         </label>
 
-        <DialogFooter className="pt-3 gap-2.5 sm:gap-3 flex flex-row justify-end w-full">
+        <DialogFooter className="pt-2 gap-2.5 sm:gap-3 flex flex-row justify-end w-full">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={loading || razorpayLoading}
-            className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-[12px] font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial px-5 rounded-xl font-bold text-xs sm:text-sm border border-[var(--card-border)] text-[var(--text-secondary)] hover:bg-[var(--primary-soft)] cursor-pointer"
           >
             Cancel
           </Button>
@@ -660,7 +627,7 @@ function RecordPaymentForm({
               type="button"
               onClick={handleRazorpayCheckout}
               disabled={loading || razorpayLoading || (isOverpayment && !confirmOverpayment)}
-              className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] bg-[#5B45E0] hover:bg-[#4C36CE] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-40 flex items-center justify-center gap-2"
+              className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-xl bg-[#5B45E0] hover:bg-[#4C36CE] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {razorpayLoading ? (
                 <>
@@ -678,7 +645,7 @@ function RecordPaymentForm({
             <Button
               type="submit"
               disabled={loading || (isOverpayment && !confirmOverpayment)}
-              className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-[12px] bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-40 flex items-center justify-center gap-2"
+              className="min-h-[44px] flex-1 sm:flex-initial px-6 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -709,7 +676,7 @@ export function RecordPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[calc(100%-1rem)] sm:max-w-md bg-white p-5 sm:p-6 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[92dvh] overflow-y-auto">
+      <DialogContent className="w-full max-w-[calc(100%-1.5rem)] sm:max-w-xl bg-white p-6 sm:p-7 rounded-[24px] border border-[var(--card-border)] shadow-2xl max-h-[90dvh] overflow-y-auto thin-scrollbar">
         <RecordPaymentForm
           key={fee.fee_id}
           fee={fee}
