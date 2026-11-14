@@ -88,7 +88,9 @@ export function DesktopTopBar() {
       <div className="w-full max-w-[1100px] mx-auto px-6 flex items-center justify-between">
         {/* Left: Brand Logo + Name */}
         <Link href="/" className="flex items-center gap-3 cursor-pointer select-none">
-          <AksharaLogo size="md" showText={true} />
+          <div data-header-logo="desktop" className="flex items-center">
+            <AksharaLogo size="md" showText={true} />
+          </div>
         </Link>
 
         {/* Center: Five Destinations as text links with 2px primary underline on active */}
@@ -134,7 +136,9 @@ export function MobileTopHeader({ title }: { title?: string }) {
   return (
     <header className="flex md:hidden h-16 items-center justify-between border-b border-[var(--card-border)]/50 bg-white/95 backdrop-blur-md px-4 sticky top-0 z-20">
       <div className="flex items-center gap-2.5">
-        <AksharaLogo size="sm" showText={false} />
+        <div data-header-logo="mobile" className="flex items-center">
+          <AksharaLogo size="sm" showText={false} />
+        </div>
         <span className="font-bold text-lg text-[var(--text)] tracking-tight">
           {title || 'Akshara Academy'}
         </span>

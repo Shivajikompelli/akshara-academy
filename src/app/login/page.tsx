@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AksharaLogo } from '@/components/ui/akshara-logo'
 import { AksharaButton } from '@/components/ui/akshara-button'
+import { PostLoginTransition } from '@/components/auth/post-login-transition'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, KeyRound } from 'lucide-react'
 
 export default function LoginPage() {
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [capsLockOn, setCapsLockOn] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isPostLogin, setIsPostLogin] = useState(false)
   const [lockoutSeconds, setLockoutSeconds] = useState<number>(0)
 
   // Check if redirected due to unauthorized account
@@ -85,8 +87,16 @@ export default function LoginPage() {
       }
 
       if (data.success || data.user) {
-        router.push('/')
-        router.refresh()
+        setIsPostLogin(true)
+        try {
+          sessionStorage.setItem('akshara_post_login_start', String(Date.now()))
+        } catch {
+          // Ignore
+        }
+        router.prefetch('/')
+        setTimeout(() => {
+          router.push('/?post_login=1')
+        }, 450)
       } else {
         setErrorMsg('Sign-in could not be verified. Please try again.')
         setIsLoading(false)
@@ -106,8 +116,17 @@ export default function LoginPage() {
   const lockRemSeconds = String(lockoutSeconds % 60).padStart(2, '0')
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 pt-safe pb-safe bg-[var(--app-bg)] text-[var(--text)]">
-      <div className="w-full max-w-[420px] space-y-6">
+    <div className="relative min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 pt-safe pb-safe bg-[var(--app-bg)] text-[var(--text)] overflow-hidden">
+      {/* Post-Login Smooth Centered Logo Animation */}
+      {isPostLogin && <PostLoginTransition active={true} isDashboardDock={false} />}
+
+      {/* Main Login View (fades out 200ms ease-out on successful auth) */}
+      <div
+        className={`w-full max-w-[420px] space-y-6 transition-all duration-200 ease-out ${
+          isPostLogin ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'
+        }`}
+        style={{ willChange: 'opacity, transform' }}
+      >
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-3">

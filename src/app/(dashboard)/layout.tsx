@@ -1,5 +1,6 @@
 import { DesktopTopBar, MobileTopHeader, MobileBottomNav } from '@/components/dashboard-nav'
 import { OfflineBanner } from '@/components/ui/offline-banner'
+import { DashboardPostLoginHandler } from '@/components/auth/dashboard-post-login-handler'
 
 export default function DashboardLayout({
   children,
@@ -8,6 +9,9 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)] text-[var(--text)]">
+      {/* Post-login smooth dock and dashboard reveal transition */}
+      <DashboardPostLoginHandler />
+
       {/* Offline connectivity warning banner */}
       <OfflineBanner />
 

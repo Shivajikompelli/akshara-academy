@@ -191,6 +191,22 @@ export default function HomePage() {
 
   const [todayIST, setTodayIST] = useState<string>('')
   const [formattedToday, setFormattedToday] = useState<string>('')
+  const [isPostLogin, setIsPostLogin] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const hasStoredStart = sessionStorage.getItem('akshara_post_login_start')
+      const params = new URLSearchParams(window.location.search)
+      if (hasStoredStart || params.get('post_login') === '1') {
+        setIsPostLogin(true)
+        const timer = setTimeout(() => setIsPostLogin(false), 1200)
+        return () => clearTimeout(timer)
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, [])
 
   const loadHomeData = useCallback(async (currentTodayIST: string) => {
     if (!currentTodayIST) return
@@ -244,7 +260,7 @@ export default function HomePage() {
   return (
     <div className="space-y-4 max-w-[1100px] mx-auto pb-10">
       {/* Top Date Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 ${isPostLogin ? 'stagger-card-0' : ''}`}>
         <div>
           <span className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider block">
             {formattedToday || 'Today'}
@@ -270,110 +286,112 @@ export default function HomePage() {
         fallbackTitle="Dashboard Overview Error"
         onReset={() => todayIST && loadHomeData(todayIST)}
       >
-        <AksharaCard variant="hero" className="p-4 sm:p-5 max-w-[760px]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest block">
-              {formattedToday || 'Today'}
-            </span>
-            <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
-              Daily Attendance & Fees
-            </h2>
-          </div>
+        <div className={isPostLogin ? 'stagger-card-1' : ''}>
+          <AksharaCard variant="hero" className="p-4 sm:p-5 max-w-[760px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest block">
+                  {formattedToday || 'Today'}
+                </span>
+                <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+                  Daily Attendance & Fees
+                </h2>
+              </div>
 
-          {/* Two Actions: "Take attendance" and "Send fee reminders" beside each other */}
-          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-            <Link href="/attendance" className="w-full sm:w-auto">
-              <button
-                type="button"
-                className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
-              >
-                <CalendarCheck className="size-4 stroke-[2.5]" />
-                <span className="truncate">Take attendance</span>
-              </button>
-            </Link>
+              {/* Two Actions: "Take attendance" and "Send fee reminders" beside each other */}
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                <Link href="/attendance" className="w-full sm:w-auto">
+                  <button
+                    type="button"
+                    className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white text-[var(--primary)] hover:bg-[var(--primary-soft)] font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    <CalendarCheck className="size-4 stroke-[2.5]" />
+                    <span className="truncate">Take attendance</span>
+                  </button>
+                </Link>
 
-            <Link href="/fees" className="w-full sm:w-auto">
-              <button
-                type="button"
-                className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
-              >
-                <BellRing className="size-4" />
-                <span className="truncate">Fee reminders</span>
-              </button>
-            </Link>
-          </div>
+                <Link href="/fees" className="w-full sm:w-auto">
+                  <button
+                    type="button"
+                    className="w-full min-h-[44px] px-3.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    <BellRing className="size-4" />
+                    <span className="truncate">Fee reminders</span>
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Three Numbers Beside Each Other in a 3-column row */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3.5 pt-3 border-t border-white/20">
+              <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
+                  Enrolled
+                </span>
+                <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
+                  {data.loading ? '—' : data.enrolledCount}
+                </span>
+                <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
+                  Active students
+                </span>
+              </div>
+
+              <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
+                  Present
+                </span>
+                {data.loading ? (
+                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
+                    —
+                  </span>
+                ) : attendanceTakenToday ? (
+                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
+                    {data.presentCount}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
+                    <Clock className="size-3 shrink-0" />
+                    <span>Not taken</span>
+                  </span>
+                )}
+                <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
+                  {attendanceTakenToday ? 'Marked present' : 'Awaiting check-in'}
+                </span>
+              </div>
+
+              <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
+                  Absent
+                </span>
+                {data.loading ? (
+                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
+                    —
+                  </span>
+                ) : attendanceTakenToday ? (
+                  <span
+                    className={`text-xl sm:text-2xl font-bold tracking-tight mt-0.5 block ${
+                      data.absentCount > 0 ? 'text-amber-200' : 'text-white'
+                    }`}
+                  >
+                    {data.absentCount}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
+                    <Clock className="size-3 shrink-0" />
+                    <span>Not taken</span>
+                  </span>
+                )}
+                <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
+                  {attendanceTakenToday ? 'Marked absent' : 'Awaiting check-in'}
+                </span>
+              </div>
+            </div>
+          </AksharaCard>
         </div>
-
-        {/* Three Numbers Beside Each Other in a 3-column row */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-3.5 pt-3 border-t border-white/20">
-          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
-            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
-              Enrolled
-            </span>
-            <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
-              {data.loading ? '—' : data.enrolledCount}
-            </span>
-            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
-              Active students
-            </span>
-          </div>
-
-          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
-            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
-              Present
-            </span>
-            {data.loading ? (
-              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
-                —
-              </span>
-            ) : attendanceTakenToday ? (
-              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
-                {data.presentCount}
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
-                <Clock className="size-3 shrink-0" />
-                <span>Not taken</span>
-              </span>
-            )}
-            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
-              {attendanceTakenToday ? 'Marked present' : 'Awaiting check-in'}
-            </span>
-          </div>
-
-          <div className="bg-white/10 rounded-[14px] p-2.5 sm:p-3 text-center sm:text-left">
-            <span className="text-[10px] sm:text-xs font-semibold text-white/80 block uppercase tracking-wider truncate">
-              Absent
-            </span>
-            {data.loading ? (
-              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5 block">
-                —
-              </span>
-            ) : attendanceTakenToday ? (
-              <span
-                className={`text-xl sm:text-2xl font-bold tracking-tight mt-0.5 block ${
-                  data.absentCount > 0 ? 'text-amber-200' : 'text-white'
-                }`}
-              >
-                {data.absentCount}
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-white/20 text-white border border-white/30 truncate">
-                <Clock className="size-3 shrink-0" />
-                <span>Not taken</span>
-              </span>
-            )}
-            <span className="text-[10px] sm:text-xs text-white/70 font-normal mt-0.5 block truncate">
-              {attendanceTakenToday ? 'Marked absent' : 'Awaiting check-in'}
-            </span>
-          </div>
-        </div>
-      </AksharaCard>
 
       {/* 2. OVERDUE FEES ALERT: Attention tint, count of overdue students, button to Fees page */}
       {!data.loading && data.overdueCount > 0 && (
-        <div className="rounded-[24px] p-5 sm:p-6 bg-[var(--attention-bg)] border border-[var(--attention)]/30 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className={`rounded-[24px] p-5 sm:p-6 bg-[var(--attention-bg)] border border-[var(--attention)]/30 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isPostLogin ? 'stagger-card-2' : ''}`}>
           <div className="flex items-start sm:items-center gap-3.5">
             <div className="size-11 rounded-[14px] bg-white border border-[var(--attention)]/30 flex items-center justify-center text-[var(--attention-text)] shrink-0 shadow-2xs">
               <AlertCircle className="size-6 stroke-[2.2]" />
@@ -410,7 +428,7 @@ export default function HomePage() {
       )}
 
       {/* 3. LIST OF CLASSES with "Taken 9:40" or "Not taken yet" and an Open button */}
-      <div className="space-y-3 pt-2">
+      <div className={`space-y-3 pt-2 ${isPostLogin ? 'stagger-card-3' : ''}`}>
         <div className="flex items-center justify-between px-1">
           <h3 className="text-base font-bold text-[var(--text)] tracking-tight">
             Today&apos;s Class Attendance

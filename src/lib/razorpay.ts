@@ -42,3 +42,4 @@ export interface RazorpayPaymentSuccessResponse {
   razorpay_order_id: string
   razorpay_signature: string
 }
+
