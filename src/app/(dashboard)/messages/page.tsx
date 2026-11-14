@@ -747,11 +747,7 @@ export default function MessageLogPage() {
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 thin-scrollbar">
               {/* WhatsApp Chat Preview Bubble */}
-              <div className="p-3.5 sm:p-4 rounded-[20px] bg-[#EFEAE2] border border-[#DDD6CE] space-y-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block text-center">
-                  WhatsApp Cloud API Template Message
-                </span>
-
+              <div className="p-3.5 sm:p-4 rounded-[20px] bg-[#EFEAE2] border border-[#DDD6CE]">
                 {/* The Bubble */}
                 <div className="max-w-[95%] sm:max-w-[92%] ml-auto bg-[var(--whatsapp-bg)] text-[var(--whatsapp-text)] rounded-[18px] rounded-tr-[4px] p-3 shadow-sm space-y-2.5 border border-[var(--whatsapp)]/20">
                   {isReceiptLog(selectedLog) && (
