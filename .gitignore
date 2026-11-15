@@ -45,6 +45,11 @@ next-env.d.ts
 # supabase
 supabase/.temp/
 
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+
 # android
 android/.gradle/
 android/app/build/
